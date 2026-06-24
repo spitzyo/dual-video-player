@@ -3,7 +3,7 @@
 Play two clips **side by side, perfectly in sync** — one timeline, one speed, one audio source. Runs entirely in your browser. Nothing is uploaded.
 
 ## Open it
-Double-click `dual-video-player.html`. No install, no build, no dependencies.
+Double-click `index.html`. No install, no build, no dependencies.
 
 ## Load videos — two ways
 1. **Library folder** — *Open library folder* → pick a folder.
