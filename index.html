@@ -73,7 +73,16 @@
 
   /* ============ WORKSPACE ============ */
   .workspace{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
-  .workspace:fullscreen,.workspace:-webkit-full-screen{width:100%;height:100%;background:var(--bg)}
+
+  /* fullscreen: whole app goes fullscreen; bars become dockable overlays */
+  .app:fullscreen, .app:-webkit-full-screen{width:100%;height:100%;background:#000}
+  .app.fs-dock .stages{background:#000}
+  .app.fs-dock .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:120;
+    transform:translateX(-100%);transition:transform .3s cubic-bezier(.22,.61,.36,1), width .2s ease}
+  .app.fs-dock.dock-left .sidebar{transform:translateX(0)}
+  .app.fs-dock .transport{position:fixed;left:0;right:0;bottom:0;z-index:120;background:var(--bg);
+    transform:translateY(100%);transition:transform .45s cubic-bezier(.22,.61,.36,1);box-shadow:0 -6px 20px rgba(0,0,0,.18)}
+  .app.fs-dock.dock-bottom .transport{transform:translateY(0)}
 
   .stages{flex:1;display:flex;min-height:0;background:var(--stage)}
   .stage{flex-grow:1;flex-basis:0;min-width:36px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -147,6 +156,14 @@
     .speed-block,.center-cluster,.left-ctl{justify-self:center}
   }
   body.resizing, body.resizing *{cursor:col-resize !important;user-select:none !important}
+
+  /* timeline preview thumbnails */
+  #thumbWrap{position:fixed;z-index:130;display:none;gap:6px;transform:translateX(-50%);
+    pointer-events:none;filter:drop-shadow(0 6px 16px rgba(0,0,0,.3))}
+  #thumbWrap.show{display:flex}
+  #thumbWrap .thumb{background:#0b0b0d;border:2px solid #fff;border-radius:7px;overflow:hidden;line-height:0}
+  #thumbWrap canvas{display:block;width:140px;height:auto}
+  #pvA,#pvB{position:fixed;left:-99999px;top:0;width:160px;height:90px;opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
@@ -252,6 +269,15 @@
         </div>
       </div>
     </div>
+
+    <!-- timeline preview (settle-to-show): two thumbnails above the dot -->
+    <div id="thumbWrap" aria-hidden="true">
+      <div class="thumb"><canvas id="thumbL" width="160" height="90"></canvas></div>
+      <div class="thumb"><canvas id="thumbR" width="160" height="90"></canvas></div>
+    </div>
+    <!-- offscreen videos used only to grab preview frames -->
+    <video id="pvA" muted playsinline preload="auto"></video>
+    <video id="pvB" muted playsinline preload="auto"></video>
   </main>
 </div>
 
@@ -262,6 +288,9 @@
   const stageA=document.getElementById('stageA'), stageB=document.getElementById('stageB');
   const stages=document.getElementById('stages'), divider=document.getElementById('divider');
   const scrub=document.getElementById('scrub'), speed=document.getElementById('speed');
+  const pvA=document.getElementById('pvA'), pvB=document.getElementById('pvB');
+  const thumbWrap=document.getElementById('thumbWrap'), thumbL=document.getElementById('thumbL'), thumbR=document.getElementById('thumbR');
+  const transportEl=document.querySelector('.transport');
   const VIDEO_RE=/\.(mp4|m4v|mov|webm|ogg|ogv|mkv)$/i;
   const FPS=30, DRIFT=0.5, SYNC_MS=2000;
   let playing=false, activeRow=null, audioDeck='A', swapped=false, currentPair=null, audioResolved=false, audioCheckUntil=0;
@@ -337,9 +366,14 @@
     audioResolved=false; audioCheckUntil=performance.now()+8000;
     loadInto(A,stageA,vids[0]);
     loadInto(B,stageB,vids[1]);
+    syncPreviewSrc();
     pause(); seekTo(0);
     setAudio('A');                       // baseline: left
     app.classList.add('collapsed');
+  }
+  function syncPreviewSrc(){
+    if(A.src && pvA.src!==A.src){ pvA.src=A.src; pvA.load(); }
+    if(B.src && pvB.src!==B.src){ pvB.src=B.src; pvB.load(); }
   }
   // Auto-pick the deck that has audio, via the audioTracks API. It IS reliable in
   // Safari — it just populates a little after metadata — so we keep checking (from
@@ -368,6 +402,7 @@
     const pa=nextMeta(A), pb=nextMeta(B);
     loadInto(A,stageA,currentPair[0]);
     loadInto(B,stageB,currentPair[1]);
+    syncPreviewSrc();
     Promise.all([pa,pb]).then(()=>{
       setRate(st.rate); setAudio(st.aud); seekTo(st.t);
       // stay paused — press Space to resume cleanly
@@ -434,15 +469,54 @@
   [A,B].forEach(v=>v.addEventListener('ended',()=>{if(A.ended||B.ended)pause();}));
 
   let scrubbing=false;
-  scrub.addEventListener('input',()=>{scrubbing=true;seekTo((scrub.value/1000)*refDuration());});
+  function paintScrub(){ scrub.style.setProperty('--p',(scrub.value/10)+'%'); }
+  scrub.addEventListener('input',()=>{scrubbing=true;seekTo((scrub.value/1000)*refDuration());paintScrub();scheduleThumbs();});
   scrub.addEventListener('change',()=>scrubbing=false);
   // click anywhere on the track (the grey part) to jump there — works alongside dragging
   scrub.addEventListener('pointerdown',e=>{
     const r=scrub.getBoundingClientRect();
     const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-    scrubbing=true; scrub.value=frac*1000; seekTo(frac*refDuration());
+    scrubbing=true; scrub.value=frac*1000; seekTo(frac*refDuration()); paintScrub(); scheduleThumbs();
   });
-  window.addEventListener('pointerup',()=>{ if(scrubbing) scrubbing=false; });
+  window.addEventListener('pointerup',()=>{ if(scrubbing){scrubbing=false;} clearThumbs(); });
+
+  /* ---------- timeline preview (hold the dot still ~0.27s to peek) ---------- */
+  const HOLD_MS=275;
+  let holdTimer=null;
+  function scheduleThumbs(){ clearTimeout(holdTimer); hideThumbs(); holdTimer=setTimeout(showThumbs,HOLD_MS); }
+  function clearThumbs(){ clearTimeout(holdTimer); hideThumbs(); }
+  function hideThumbs(){ thumbWrap.classList.remove('show'); }
+  function drawThumb(pv,canvas,t){
+    const dur=isFinite(pv.duration)?pv.duration:t;
+    const tt=Math.max(0,Math.min(t,dur));
+    const draw=()=>{
+      if(pv.readyState<2) return;
+      const ctx=canvas.getContext('2d'), cw=canvas.width, ch=canvas.height;
+      const vw=pv.videoWidth||cw, vh=pv.videoHeight||ch, s=Math.min(cw/vw,ch/vh);
+      const dw=vw*s, dh=vh*s;
+      ctx.fillStyle='#0b0b0d'; ctx.fillRect(0,0,cw,ch);
+      ctx.drawImage(pv,(cw-dw)/2,(ch-dh)/2,dw,dh);
+    };
+    if(pv.readyState>=2 && Math.abs(pv.currentTime-tt)<0.04){ draw(); }
+    else { pv.addEventListener('seeked',draw,{once:true}); try{pv.currentTime=tt;}catch(_){} }
+  }
+  function positionThumbs(){
+    const r=scrub.getBoundingClientRect(), frac=scrub.value/1000;
+    let x=r.left+frac*r.width;
+    const half=thumbWrap.offsetWidth/2;
+    x=Math.max(half+8,Math.min(window.innerWidth-half-8,x));
+    thumbWrap.style.left=x+'px';
+    thumbWrap.style.top=(r.top-thumbWrap.offsetHeight-12)+'px';
+  }
+  function showThumbs(){
+    if(!scrubbing || !A.src || !B.src) return;
+    const t=(scrub.value/1000)*refDuration();
+    const leftPv=swapped?pvB:pvA, rightPv=swapped?pvA:pvB;   // match on-screen sides
+    drawThumb(leftPv,thumbL,t);
+    drawThumb(rightPv,thumbR,t);
+    thumbWrap.classList.add('show');
+    positionThumbs();
+  }
 
   /* ---------- speed ---------- */
   function setRate(r){
@@ -474,14 +548,38 @@
   function toggleAudio(){audioResolved=true;setAudio(audioDeck==='A'?'B':'A');}
   setAudio('A');
 
-  /* ---------- fullscreen ---------- */
-  const ws=document.getElementById('workspace');
+  /* ---------- fullscreen + dock-style auto-hide bars ---------- */
+  let wasCollapsed=false;
   function fsElement(){return document.fullscreenElement||document.webkitFullscreenElement;}
-  function toggleFs(){if(fsElement()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(ws.requestFullscreen||ws.webkitRequestFullscreen).call(ws);}}
+  function toggleFs(){if(fsElement()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(app.requestFullscreen||app.webkitRequestFullscreen).call(app);}}
   function setFsIcon(){const on=!!fsElement();document.getElementById('fsIcon').innerHTML=on?'<path d="M9 4v3a2 2 0 0 1-2 2H4M15 4v3a2 2 0 0 0 2 2h3M9 20v-3a2 2 0 0 0-2-2H4M15 20v-3a2 2 0 0 1 2-2h3"/>':'<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>';}
+  function onFsChange(){
+    setFsIcon();
+    if(fsElement()){
+      wasCollapsed=app.classList.contains('collapsed');
+      app.classList.add('collapsed');        // reveal as the slim rail; hamburger expands it
+      app.classList.add('fs-dock');
+    } else {
+      app.classList.remove('fs-dock','dock-left','dock-bottom');
+      app.classList.toggle('collapsed', wasCollapsed);
+    }
+  }
   document.getElementById('fsBtn').addEventListener('click',toggleFs);
-  document.addEventListener('fullscreenchange',setFsIcon);
-  document.addEventListener('webkitfullscreenchange',setFsIcon);
+  document.addEventListener('fullscreenchange',onFsChange);
+  document.addEventListener('webkitfullscreenchange',onFsChange);
+  // dock reveal: push the cursor to an edge to summon that bar; it stays while you're on it
+  const EDGE_LEFT=8, EDGE_BOTTOM=32;
+  window.addEventListener('mousemove',e=>{
+    if(!app.classList.contains('fs-dock'))return;
+    const ih=window.innerHeight, barH=(transportEl.offsetHeight||120)+10;
+    const showBottom=scrubbing || (ih-e.clientY)<=EDGE_BOTTOM || (app.classList.contains('dock-bottom') && (ih-e.clientY)<=barH);
+    app.classList.toggle('dock-bottom',showBottom);
+    const expanded=!app.classList.contains('collapsed');
+    const keepLeft=expanded?270:60;
+    const showLeft=e.clientX<=EDGE_LEFT || (app.classList.contains('dock-left') && e.clientX<=keepLeft);
+    app.classList.toggle('dock-left',showLeft);
+    if(!showLeft) app.classList.add('collapsed');   // leaving the left zone re-collapses to the rail
+  });
 
   /* ---------- ui + gentle sync ---------- */
   function fmt(s){
