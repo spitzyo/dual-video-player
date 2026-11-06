@@ -18,7 +18,7 @@ Any two recordings of the same moment:
 
 1. Open the link above, or download `index.html` and double-click it. It works offline.
 2. Load your videos in one of two ways:
-   - **Load two clips:** ⌘-click (Ctrl-click on Windows) two video files.
+   - **Load two clips:** ⌘-click (Ctrl-click on Windows) two video files, plus a caption file if you have one.
    - **Open library folder:** pick a folder. Every sub-folder that holds two videos becomes a pair, and nested folders become categories in the sidebar. Click a pair to play it.
 3. Press **Space** to play.
 
@@ -28,6 +28,7 @@ The left video is **L** and the right one is **R**.
 
 - **True sync:** both videos follow one timeline. If they drift apart, only the muted video is nudged back, so the sound you hear never stutters.
 - **One audio track:** choose L or R, or click the speaker to mute both. When only one video has sound, it's picked for you automatically (Safari).
+- **Captions:** if a pair's folder also holds an `.srt` or `.vtt` caption file, a **CC** button appears. Captions show at the bottom of the video you're listening to, and right-to-left languages like Hebrew display correctly.
 - **Fine speed control:** from 0.1× to 3×, with voices kept at their natural pitch. Use the 1×, 1.5× and 2× buttons or the number keys, or click **speed** and use the arrow keys for 0.05× steps.
 - **Timeline previews:** while dragging the timeline, hold still for a moment to see both videos at that point.
 - **Zoom and pan:** scroll on a video to zoom in where your pointer is, then drag to look around.
@@ -48,6 +49,7 @@ The left video is **L** and the right one is **R**.
 | Click **speed**, then `←` / `→` | Speed −/+ 0.05× (hold `⇧` for 0.10×). Your next click anywhere else, or `Esc`, turns the arrows back to skipping time |
 | `A` | Switch audio L ↔ R |
 | `M` | Mute / unmute |
+| `C` | Captions on / off |
 | `S` | Swap sides |
 | `R` | Reload the pair |
 | `F` | Fullscreen |
