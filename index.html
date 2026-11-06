@@ -758,6 +758,7 @@
   function setRate(r){
     r=Math.max(0.1,Math.min(3,Math.round(r*100)/100));
     A.playbackRate=r;B.playbackRate=r;speed.value=r;
+    A.defaultPlaybackRate=r;B.defaultPlaybackRate=r;   // loading a new pair resets to this, so the speed shown stays true
     document.getElementById('speedVal').textContent=r.toFixed(2)+'×';
     speed.style.setProperty('--sp',((r-0.1)/2.9*100)+'%');
     document.querySelectorAll('.preset').forEach(p=>p.classList.toggle('active',parseFloat(p.dataset.s)===r));
