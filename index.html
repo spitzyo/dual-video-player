@@ -160,6 +160,12 @@
 
   .audio{display:flex;align-items:center;gap:9px;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2)}
   .audio .spk{width:23px;height:23px;stroke:var(--muted);flex-shrink:0}
+  .spk-btn{background:none;border:none;padding:0;margin:0;display:flex;border-radius:6px}
+  .spk-btn:hover .spk{stroke:var(--txt)}
+  .spk-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .spk .slash{display:none}
+  .app.muted .spk .slash{display:inline}
+  .app.muted .seg-group{opacity:.45}
   .seg-group{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
   .seg{background:#fff;border:none;width:42px;height:46px;font-family:var(--mono);font-size:18px;font-weight:500;color:var(--muted);transition:.12s}
   .seg+.seg{border-left:1px solid var(--line)}
@@ -315,7 +321,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
           </button>
           <div class="audio">
-            <svg class="spk" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+            <button class="spk-btn" id="muteBtn" aria-label="Mute" aria-pressed="false" title="Mute (M)"><svg class="spk" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg></button>
             <div class="seg-group">
               <button class="seg active" data-side="L">L</button>
               <button class="seg" data-side="R">R</button>
@@ -392,6 +398,7 @@
           <div class="help-row"><kbd>F</kbd><span class="desc">Fullscreen</span></div>
           <div class="help-row"><kbd>S</kbd><span class="desc">Swap sides</span></div>
           <div class="help-row"><kbd>A</kbd><span class="desc">Audio L / R</span></div>
+          <div class="help-row"><kbd>M</kbd><span class="desc">Mute / unmute</span></div>
           <div class="help-row"><kbd>L</kbd><span class="desc">Toggle sidebar</span></div>
           <div class="help-row"><kbd>R</kbd><span class="desc">Reload pair</span></div>
         </section>
@@ -787,15 +794,23 @@
     const side=audioSide();
     document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('active',s.dataset.side===side));
   }
+  let allMuted=false;                  // speaker button / M: silence both, remember the chosen side
+  function setMuted(m){
+    allMuted=m; app.classList.toggle('muted',m);
+    const mb=document.getElementById('muteBtn'); mb.setAttribute('aria-pressed',String(m)); mb.setAttribute('aria-label',m?'Unmute':'Mute');
+    setAudio(audioDeck);
+  }
+  function toggleMute(){ setMuted(!allMuted); }
+  document.getElementById('muteBtn').addEventListener('click',toggleMute);
   function setAudio(which){            // which = 'A' or 'B' (deck letter)
     audioDeck=which;
-    A.muted=(which!=='A'); B.muted=(which!=='B');
+    A.muted=allMuted||(which!=='A'); B.muted=allMuted||(which!=='B');
     updateAudioButtons();
     if(playing) syncTargets(true);     // re-align the now-muted deck to the one you hear
   }
   function setAudioBySide(side){ setAudio(side==='L'?leftDeckLetter():rightDeckLetter()); }
-  document.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',()=>{audioResolved=true;setAudioBySide(s.dataset.side);}));
-  function toggleAudio(){audioResolved=true;setAudio(audioDeck==='A'?'B':'A');}
+  document.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',()=>{audioResolved=true;if(allMuted)setMuted(false);setAudioBySide(s.dataset.side);}));   // picking L/R while muted unmutes
+  function toggleAudio(){audioResolved=true;if(allMuted)setMuted(false);setAudio(audioDeck==='A'?'B':'A');}
   setAudio('A');
 
   /* ---------- fullscreen + dock-style auto-hide bars ---------- */
@@ -883,6 +898,7 @@
       case 'f':case 'F':toggleFs();break;
       case 's':case 'S':swapSides();break;
       case 'a':case 'A':toggleAudio();break;
+      case 'm':case 'M':toggleMute();break;
       case 'l':case 'L':app.classList.toggle('collapsed');break;
       case 'r':case 'R':reloadPair();break;
     }
