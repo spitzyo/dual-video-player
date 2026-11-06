@@ -167,14 +167,21 @@
 
   .speed-block{display:flex;align-items:center;gap:14px;justify-self:end;flex-wrap:wrap;justify-content:flex-end}
   .speed-ctl{display:flex;align-items:center;gap:12px}
-  .speed-ctl .lab{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .speed-ctl .lab{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+    cursor:pointer;user-select:none;-webkit-user-select:none;border-radius:6px;padding:4px 6px;margin:-4px -6px;transition:color .12s,background .12s}
+  .speed-ctl .lab:hover{color:var(--txt)}
   .speed{width:175px}
-  .speed::-webkit-slider-runnable-track{height:5px;border-radius:100px;background:linear-gradient(90deg,var(--txt) 0 var(--sp,40%),var(--line) var(--sp,40%))}
+  .speed::-webkit-slider-runnable-track{height:5px;border-radius:100px;background:linear-gradient(90deg,var(--spc,var(--txt)) 0 var(--sp,40%),var(--line) var(--sp,40%))}
   .speed::-moz-range-track{height:5px;border-radius:100px;background:var(--line)}
-  .speed::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:4px;background:var(--txt);margin-top:-5.5px;transition:transform .1s}
-  .speed::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:4px;background:var(--txt)}
+  .speed::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:4px;background:var(--spc,var(--txt));margin-top:-5.5px;transition:transform .1s}
+  .speed::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:4px;background:var(--spc,var(--txt))}
   .speed::-webkit-slider-thumb:hover{transform:scale(1.12)}
-  .speed-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--txt);min-width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:7px 6px}
+  .speed-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--txt);min-width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:7px 6px;
+    transition:color .12s,border-color .12s,box-shadow .12s}
+  /* speed arrow mode: armed by clicking "speed" or the slider; ← → then fine-tune speed */
+  .speed-ctl.armed .lab{color:var(--accent);background:var(--accent-soft)}
+  .speed-ctl.armed .speed{--spc:var(--accent)}
+  .speed-ctl.armed .speed-val{color:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   .presets{display:flex;gap:6px;margin-left:8px}
   .preset{font-family:var(--mono);font-size:14px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 0;min-width:58px;text-align:center;transition:.12s}
   .preset:hover{border-color:var(--muted-2);color:var(--txt)}
@@ -334,7 +341,7 @@
 
         <div class="speed-block">
           <div class="speed-ctl">
-            <span class="lab">speed</span>
+            <span class="lab" title="Click, then ← → to fine-tune speed (hold ⇧ for bigger steps)">speed</span>
             <input type="range" class="speed" id="speed" min="0.1" max="3" step="0.05" value="1" aria-label="Playback speed">
             <div class="speed-val" id="speedVal">1.00×</div>
           </div>
@@ -375,6 +382,8 @@
           <div class="help-row"><kbd>`</kbd><kbd>§</kbd><span class="desc">1× normal</span></div>
           <div class="help-row"><kbd>1</kbd><span class="sep">–</span><kbd>9</kbd><span class="desc">1.1× – 1.9×</span></div>
           <div class="help-row"><kbd>0</kbd><span class="desc">2×</span></div>
+          <div class="help-row"><span class="gesture">Click speed, then</span><kbd>←</kbd><kbd>→</kbd><span class="desc">±0.05×</span></div>
+          <div class="help-row"><span class="gesture">…holding</span><kbd>⇧</kbd><span class="desc">±0.10×</span></div>
         </section>
         <section class="help-sec">
           <h3>View</h3>
@@ -756,6 +765,17 @@
   speed.addEventListener('input',()=>setRate(+speed.value));
   document.getElementById('presets').addEventListener('click',e=>{const b=e.target.closest('.preset');if(b)setRate(+b.dataset.s);});
 
+  /* ---------- speed arrow mode ---------- */
+  // Click the word "speed" or the slider → ← → change speed (±0.05, ⇧ ±0.10).
+  // The very next click anywhere else (or Esc) hands the arrows back to the timeline.
+  const speedCtl=document.querySelector('.speed-ctl');
+  let speedArmed=false;
+  function armSpeed(on){ speedArmed=on; speedCtl.classList.toggle('armed',on); }
+  document.addEventListener('pointerdown',e=>armSpeed(!!e.target.closest('.speed-ctl')),true);  // capture: sees every click first
+  speed.addEventListener('focus',()=>armSpeed(true));                                          // reached with Tab
+  speed.addEventListener('blur',e=>{ if(e.relatedTarget && !speedCtl.contains(e.relatedTarget)) armSpeed(false); });  // tabbed away
+  function nudgeSpeed(d){ setRate(+speed.value+d); }
+
   /* ---------- audio L/R (follows physical side, not the underlying deck) ---------- */
   function leftDeckLetter(){ return swapped?'B':'A'; }
   function rightDeckLetter(){ return swapped?'A':'B'; }
@@ -840,11 +860,15 @@
 
   /* ---------- keyboard ---------- */
   document.addEventListener('keydown',e=>{
-    if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;
+    if(['INPUT','TEXTAREA'].includes(e.target.tagName) && e.target!==speed)return;   // a focused speed slider still lets shortcuts through
     if(e.metaKey||e.ctrlKey||e.altKey)return;
     const k=e.key;
     if(k==='?'){e.preventDefault();toggleHelp();return;}
     if(helpOpen){if(k==='Escape')closeHelp();return;}
+    if(speedArmed){
+      if(k==='ArrowLeft'||k==='ArrowRight'){e.preventDefault();nudgeSpeed((k==='ArrowRight'?1:-1)*(e.shiftKey?0.10:0.05));return;}
+      if(k==='Escape'){armSpeed(false);speed.blur();return;}
+    }
     // speed:  § = 1.0,  1..9 = 1.1..1.9,  0 = 2.0
     if(k==='§'||k==='`'){setRate(1.0);return;}
     if(k>='1'&&k<='9'){setRate(1.0+(+k)/10);return;}
