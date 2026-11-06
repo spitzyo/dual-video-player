@@ -199,6 +199,21 @@
   }
   body.resizing, body.resizing *{cursor:col-resize !important;user-select:none !important}
 
+  /* captions (CC): the button and the strip exist only for pairs whose folder has an .srt/.vtt */
+  .cc-group{display:none;align-items:center;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2)}
+  .app.has-cc .cc-group{display:flex}
+  .tbtn.cc{width:52px;padding:0;font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.04em;color:var(--muted)}
+  .tbtn.cc.on{background:var(--txt);border-color:var(--txt);color:#fff}
+  .tbtn.cc.on:hover{background:#2a2d34}
+  .cc-strip{display:none;position:absolute;left:0;right:0;bottom:20px;z-index:50;padding:0 56px;font-size:26px;
+    align-items:flex-end;justify-content:center;text-align:center;pointer-events:none;
+    transition:transform .45s cubic-bezier(.22,.61,.36,1)}   /* lives inside the video you hear; floats, so it never resizes anything */
+  .app.has-cc.cc-on .cc-strip{display:flex}
+  .app.fs-dock.dock-bottom .cc-strip{transform:translateY(calc(-1 * var(--barh,160px)))}   /* fullscreen: rise above the bar as it slides up */
+  .cc-text{font-family:var(--sans);font-weight:600;line-height:1.3;color:#fff;max-width:100%;
+    text-shadow:0 0 2px #000,0 0 3px #000,0 0 6px rgba(0,0,0,.85),0 2px 3px #000}   /* white with a dark outline, like TV subtitles */
+  .cc-text div{unicode-bidi:plaintext}
+
   /* timeline preview thumbnails */
   #thumbWrap{position:fixed;z-index:130;display:none;gap:6px;transform:translateX(-50%);
     pointer-events:none;filter:drop-shadow(0 6px 16px rgba(0,0,0,.3))}
@@ -273,7 +288,7 @@
         <div class="lib-root" id="libRoot"></div>
       </div>
       <input type="file" id="libInput" webkitdirectory directory multiple hidden>
-      <input type="file" id="twoInput" accept="video/*" multiple hidden>
+      <input type="file" id="twoInput" accept="video/*,.srt,.vtt" multiple hidden>
     </div>
     <div class="lib-tree" id="libTree">
       <div class="tree-empty">No library open yet.<br>Open a folder of paired clips, or load two clips directly.</div>
@@ -292,6 +307,8 @@
       <div class="stage" id="stageA">
         <video id="videoA" playsinline></video>
         <div class="placeholder"><span class="tag">Deck L</span><span class="hint">Click to open a library folder</span></div>
+        <!-- captions: sit at the bottom of the video you are listening to (moved there by setAudio) -->
+        <div class="cc-strip" id="ccStrip"><div class="cc-text" id="ccText"></div></div>
       </div>
       <div class="v-divider" id="divider" title="Drag to resize"></div>
       <div class="stage" id="stageB">
@@ -324,6 +341,9 @@
               <button class="seg active" data-side="L">L</button>
               <button class="seg" data-side="R">R</button>
             </div>
+          </div>
+          <div class="cc-group">
+            <button class="tbtn cc" id="ccBtn" aria-pressed="false" aria-label="Captions" title="Captions (C)">CC</button>
           </div>
         </div>
 
@@ -397,6 +417,7 @@
           <div class="help-row"><kbd>S</kbd><span class="desc">Swap sides</span></div>
           <div class="help-row"><kbd>A</kbd><span class="desc">Audio L / R</span></div>
           <div class="help-row"><kbd>M</kbd><span class="desc">Mute / unmute</span></div>
+          <div class="help-row"><kbd>C</kbd><span class="desc">Captions on / off</span></div>
           <div class="help-row"><kbd>L</kbd><span class="desc">Toggle sidebar</span></div>
           <div class="help-row"><kbd>R</kbd><span class="desc">Reload pair</span></div>
         </section>
@@ -427,6 +448,7 @@
   const thumbWrap=document.getElementById('thumbWrap'), thumbL=document.getElementById('thumbL'), thumbR=document.getElementById('thumbR');
   const transportEl=document.querySelector('.transport');
   const VIDEO_RE=/\.(mp4|m4v|mov|webm|ogg|ogv|mkv)$/i;
+  const CAP_RE=/\.(srt|vtt)$/i;   // caption files beside the clips, e.g. captions.<lang>.srt
   const DRIFT=0.5, SYNC_MS=2000;
   let playing=false, activeRow=null, audioDeck='A', swapped=false, currentPair=null, audioResolved=false, audioCheckUntil=0;
 
@@ -437,9 +459,10 @@
   document.getElementById('loadTwoBtn').addEventListener('click',()=>document.getElementById('twoInput').click());
   document.getElementById('twoInput').addEventListener('change',e=>{
     const vids=[...e.target.files].filter(f=>VIDEO_RE.test(f.name));
+    const subs=[...e.target.files].filter(f=>CAP_RE.test(f.name));
     if(vids.length<2){alert('Pick two video files (Cmd-click to select both).');return;}
     if(activeRow){activeRow.classList.remove('active');activeRow=null;}
-    loadPair([vids[0],vids[1]]);
+    loadPair([vids[0],vids[1]],subs);
   });
 
   /* ---------- library folder ---------- */
@@ -452,12 +475,13 @@
     renderTree(tree.children[topName]||tree);
   });
   function buildTree(files){
-    const root={children:{},videos:[]};
+    const root={children:{},videos:[],subs:[]};
     for(const f of files){
       const parts=(f.webkitRelativePath||f.name).split('/');
       let node=root;
-      for(let i=0;i<parts.length-1;i++){const seg=parts[i];node.children[seg]=node.children[seg]||{name:seg,children:{},videos:[]};node=node.children[seg];}
+      for(let i=0;i<parts.length-1;i++){const seg=parts[i];node.children[seg]=node.children[seg]||{name:seg,children:{},videos:[],subs:[]};node=node.children[seg];}
       if(VIDEO_RE.test(parts[parts.length-1])) node.videos.push(f);
+      else if(CAP_RE.test(parts[parts.length-1])) node.subs.push(f);
     }
     return root;
   }
@@ -492,12 +516,13 @@
     const vids=node.videos.slice().sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
     row.innerHTML='<span style="width:14px;flex-shrink:0"></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="9" height="12" rx="1.5"/><rect x="13" y="6" width="9" height="12" rx="1.5"/></svg><span class="nm"></span><span class="badge">'+vids.length+'</span>';
     row.querySelector('.nm').textContent=label||node.name;
-    row.addEventListener('click',ev=>{ev.stopPropagation();if(activeRow)activeRow.classList.remove('active');row.classList.add('active');activeRow=row;loadPair(vids);});
+    row.addEventListener('click',ev=>{ev.stopPropagation();if(activeRow)activeRow.classList.remove('active');row.classList.add('active');activeRow=row;loadPair(vids,node.subs);});
     return row;
   }
 
-  function loadPair(vids){
+  function loadPair(vids,subs){
     currentPair=[vids[0],vids[1]];
+    loadCaptions(subs||[]);
     audioResolved=false; audioCheckUntil=performance.now()+8000;
     loadInto(A,stageA,vids[0]);
     loadInto(B,stageB,vids[1]);
@@ -803,6 +828,8 @@
   function setAudio(which){            // which = 'A' or 'B' (deck letter)
     audioDeck=which;
     A.muted=allMuted||(which!=='A'); B.muted=allMuted||(which!=='B');
+    const cs=document.getElementById('ccStrip'), host=(which==='B'?stageB:stageA);
+    if(cs.parentElement!==host){ host.appendChild(cs); sizeCaptions(); }   // captions follow the sound
     updateAudioButtons();
     if(playing) syncTargets(true);     // re-align the now-muted deck to the one you hear
   }
@@ -810,6 +837,72 @@
   document.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',()=>{audioResolved=true;if(allMuted)setMuted(false);setAudioBySide(s.dataset.side);}));   // picking L/R while muted unmutes
   function toggleAudio(){audioResolved=true;if(allMuted)setMuted(false);setAudio(audioDeck==='A'?'B':'A');}
   setAudio('A');
+
+  /* ---------- captions (CC) ---------- */
+  // Reads the .srt/.vtt files from the pair's folder and shows the current line in a strip
+  // under the videos. Hebrew lines lay out right-to-left on their own (dir=auto per line).
+  const ccBtn=document.getElementById('ccBtn'), ccText=document.getElementById('ccText');
+  let caps=null, capIdx=-2, capToken=0;
+  let ccOn=true; try{ ccOn=localStorage.getItem('dvp.cc')!=='0'; }catch(_){}
+  function capTime(x){
+    const m=x.trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d{1,3})$/);
+    return m ? (+(m[1]||0))*3600+(+m[2])*60+(+m[3])+(+m[4].padEnd(3,'0'))/1000 : NaN;
+  }
+  function capClean(x){
+    return x.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+            .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&').trim();
+  }
+  function parseCaptions(txt){
+    const out=[];
+    for(const block of txt.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split(/\n\s*\n/)){
+      const lines=block.split('\n'), i=lines.findIndex(l=>l.includes('-->'));
+      if(i<0) continue;
+      const [a,b]=lines[i].split('-->'), s=capTime(a), e=capTime((b||'').trim().split(/\s+/)[0]);
+      if(!(e>s)) continue;                                   // bad or missing timestamps
+      const text=lines.slice(i+1).map(capClean).filter(Boolean);
+      if(text.length) out.push({s,e,text});
+    }
+    return out.sort((x,y)=>x.s-y.s);
+  }
+  function setCaptions(list){
+    caps=(list&&list.length)?list:null; capIdx=-2;
+    app.classList.toggle('has-cc',!!caps);
+    renderCaption(); requestAnimationFrame(zRefresh);
+  }
+  function loadCaptions(files){
+    const tok=++capToken; setCaptions(null);
+    if(!files.length) return;
+    Promise.all(files.map(f=>f.text().then(parseCaptions).catch(()=>[]))).then(lists=>{
+      if(tok!==capToken) return;                           // another pair was opened meanwhile
+      lists.sort((x,y)=>y.length-x.length);                // fullest track wins (some exports add an empty one)
+      setCaptions(lists[0]);
+    });
+  }
+  function capAt(t){                                       // the cue showing at time t, or -1
+    let lo=0, hi=caps.length-1, k=-1;
+    while(lo<=hi){ const m=(lo+hi)>>1; if(caps[m].s<=t){k=m;lo=m+1;} else hi=m-1; }
+    return (k>=0 && t<caps[k].e) ? k : -1;
+  }
+  function renderCaption(){
+    const i=(caps&&ccOn) ? capAt(masterTime()) : -1;
+    if(i===capIdx) return;
+    capIdx=i; ccText.textContent='';
+    if(i<0) return;
+    for(const line of caps[i].text){ const d=document.createElement('div'); d.dir='auto'; d.textContent=line; ccText.appendChild(d); }
+  }
+  function sizeCaptions(){                                 // one size for every caption: ~2.8% of the video's width, 13–28px
+    const cs=document.getElementById('ccStrip'), w=cs.parentElement.clientWidth;
+    if(w) cs.style.fontSize=Math.round(Math.max(13,Math.min(28,w*0.028)))+'px';
+  }
+  try{ const ro=new ResizeObserver(sizeCaptions); ro.observe(stageA); ro.observe(stageB); }catch(_){ window.addEventListener('resize',sizeCaptions); }
+  function applyCC(){
+    app.classList.toggle('cc-on',ccOn); ccBtn.classList.toggle('on',ccOn); ccBtn.setAttribute('aria-pressed',String(ccOn));
+    capIdx=-2; renderCaption(); requestAnimationFrame(zRefresh);
+  }
+  function toggleCC(){ if(!caps) return; ccOn=!ccOn; try{ localStorage.setItem('dvp.cc',ccOn?'1':'0'); }catch(_){} applyCC(); }
+  ccBtn.addEventListener('click',toggleCC);
+  (function capLoop(){ renderCaption(); requestAnimationFrame(capLoop); })();
+  applyCC();
 
   /* ---------- fullscreen + dock-style auto-hide bars ---------- */
   let wasCollapsed=false;
@@ -822,6 +915,7 @@
       wasCollapsed=app.classList.contains('collapsed');
       app.classList.add('collapsed');        // reveal as the slim rail; hamburger expands it
       app.classList.add('fs-dock');
+      app.style.setProperty('--barh',(transportEl.offsetHeight||157)+'px');   // captions lift by exactly the bar's height
     } else {
       app.classList.remove('fs-dock','dock-left','dock-bottom');
       app.classList.toggle('collapsed', wasCollapsed);
@@ -897,6 +991,7 @@
       case 's':case 'S':swapSides();break;
       case 'a':case 'A':toggleAudio();break;
       case 'm':case 'M':toggleMute();break;
+      case 'c':case 'C':toggleCC();break;
       case 'l':case 'L':app.classList.toggle('collapsed');break;
       case 'r':case 'R':reloadPair();break;
     }
