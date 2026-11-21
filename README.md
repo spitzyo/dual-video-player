@@ -36,6 +36,7 @@ The left video is **L** and the right one is **R**.
 - **Layout:** drag the divider between the videos to resize them, or swap sides with one click.
 - **Fullscreen:** the sidebar and controls tuck away and slide back when you move the pointer to the edge.
 - **Reload pair:** restarts both files and keeps your place, speed and audio choice.
+- **Long names:** hover a clip or folder name that's cut off to see it in full. The name also slides sideways so you can read it in place.
 
 ## Controls
 
