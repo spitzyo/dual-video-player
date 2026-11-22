@@ -29,7 +29,7 @@ The left video is **L** and the right one is **R**.
 - **True sync:** both videos follow one timeline. If they drift apart, only the muted video is nudged back, so the sound you hear never stutters.
 - **One audio track:** choose L or R, or click the speaker to mute both. When only one video has sound, it's picked for you automatically (Safari).
 - **Captions:** if a pair's folder also holds an `.srt` or `.vtt` caption file, a **CC** button appears. Captions show at the bottom of the video you're listening to, and right-to-left languages like Hebrew display correctly.
-- **Fine speed control:** from 0.1× to 3×, with voices kept at their natural pitch. Use the 1×, 1.5× and 2× buttons or the number keys, or click **speed** and use the arrow keys for 0.05× steps.
+- **Fine speed control:** from 0.1× to 3× (2× in Safari), with voices kept at their natural pitch. Use the 1×, 1.5× and 2× buttons or the number keys, or click **speed** and use the arrow keys for 0.05× steps.
 - **Timeline previews:** while dragging the timeline, hold still for a moment to see both videos at that point.
 - **Zoom and pan:** scroll on a video to zoom in where your pointer is, then drag to look around.
 - **Lighten:** the ☀ button in a video's corner brightens dark footage, such as a blackboard.
@@ -70,6 +70,7 @@ Your videos never leave your computer. The player is a single page with no accou
 - **Both videos need to start at the same moment.** There's no setting yet to shift one of them in time.
 - **You pick the folder again each visit,** because browsers don't let a web page keep access to your files.
 - **Automatic audio pick works best in Safari.** Other browsers may not report which video has sound, but the L / R buttons always work.
+- **Safari tops out at 2×.** Above that speed, Safari shows only an occasional frame while the sound keeps going, so the player stops at 2× there. Other browsers go up to 3×.
 - **File types:** MP4 (H.264) and MOV play in every browser. Some MKV files or unusual formats may not play, which is a browser limit.
 - **A pair is a folder with two videos.** If a folder holds more, the first two in alphabetical order are used.
 
