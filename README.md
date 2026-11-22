@@ -1,8 +1,8 @@
-# Dual Video Player
+# Lecture Player
 
 Play two videos **side by side, perfectly in sync**: one timeline, one speed control, one audio track. A single video plays on its own with the same controls. It runs entirely in your browser. Nothing is uploaded and there's nothing to install.
 
-**Open it:** **https://spitzyo.github.io/dual-video-player/**
+**Open it:** **https://spitzyo.github.io/lecture-player/**
 
 ## What it's for
 
