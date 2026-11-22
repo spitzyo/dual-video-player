@@ -1136,7 +1136,7 @@
 
   /* ---------- keyboard ---------- */
   document.addEventListener('keydown',e=>{
-    if(['INPUT','TEXTAREA'].includes(e.target.tagName) && e.target!==speed)return;   // a focused speed slider still lets shortcuts through
+    if(['INPUT','TEXTAREA'].includes(e.target.tagName) && e.target!==speed && e.target!==scrub)return;   // a focused speed slider or timeline still lets shortcuts through
     if(e.metaKey||e.ctrlKey||e.altKey)return;
     const k=e.key;
     if(k==='?'){e.preventDefault();toggleHelp();return;}
