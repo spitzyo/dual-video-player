@@ -89,6 +89,7 @@
   .app.fs-dock .transport{position:fixed;left:0;right:0;bottom:0;z-index:120;background:var(--bg);
     transform:translateY(100%);transition:transform .45s cubic-bezier(.22,.61,.36,1);box-shadow:0 -6px 20px rgba(0,0,0,.18)}
   .app.fs-dock.dock-bottom .transport{transform:translateY(0)}
+  .app.fs-dock:not(.dock-bottom) .scrub-row{visibility:hidden;transition:visibility 0s linear .45s}   /* fullscreen: the line leaves with the bar, once it has slid away */
 
   .stages{flex:1;display:flex;min-height:0;background:var(--stage);position:relative}
   .stage{flex-grow:1;flex-basis:0;min-width:36px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -135,21 +136,39 @@
   .v-divider:hover::after,.v-divider.dragging::after{background:var(--muted)}
 
   /* ============ TRANSPORT ============ */
-  .transport{padding:16px 24px 20px;border-top:1px solid var(--line)}
-  .scrub-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
-  .tc{font-family:var(--mono);font-size:16.5px;line-height:18px;color:var(--muted);min-width:68px}
-  .tc.cur{color:var(--txt);text-align:right}
+  .transport{position:relative;z-index:70;padding:14px 24px 16px}   /* above the videos, so the timeline can sit on the seam */
+  /* The timeline runs along the seam between the videos and the bar, edge to edge. The line and its dot are plain
+     elements; the range input on top of them is invisible and only takes clicks, drags and keys, so every browser
+     draws the line in the same place. Its 18px band, centred on the seam, is the grab area. */
+  .scrub-row{position:absolute;left:0;right:0;top:-9px;height:18px;--p:0%}
+  .seam-line{position:absolute;left:0;right:0;top:6px;height:6px;background:var(--line);pointer-events:none}
+  .seam-fill{position:absolute;left:0;top:0;bottom:0;width:var(--p);background:var(--accent)}
+  .seam-dot{position:absolute;top:1.5px;left:clamp(7.5px,var(--p),calc(100% - 7.5px));width:15px;height:15px;margin-left:-7.5px;
+    border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.9);pointer-events:none}
   input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
   input[type=range]:focus{outline:none}
-  .scrub{flex:1}
-  .scrub::-webkit-slider-runnable-track{height:6px;border-radius:100px;background:linear-gradient(90deg,var(--accent) 0 var(--p,0%),var(--line) var(--p,0%))}
-  .scrub::-moz-range-track{height:6px;border-radius:100px;background:var(--line)}
-  .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);margin-top:-4.5px;box-shadow:0 0 0 3px rgba(255,255,255,.9);transition:transform .1s}
-  .scrub::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;background:var(--accent)}
-  .scrub::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  .scrub{position:absolute;left:0;top:0;width:100%;height:18px;margin:0;opacity:0}
+  .scrub::-webkit-slider-runnable-track{height:18px;background:transparent}
+  .scrub::-moz-range-track{height:18px;background:transparent}
+  .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:1px;height:18px;background:transparent}   /* 1px: the value follows the pointer exactly, edge to edge */
+  .scrub::-moz-range-thumb{width:1px;height:18px;border:none;background:transparent}
+  /* the time, in the control row */
+  .time-read{display:flex;align-items:center;gap:6px;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2);white-space:nowrap}
+  .tc{font-family:var(--mono);font-size:15px;line-height:18px;color:var(--muted)}
+  .tc.cur{color:var(--txt)}
+  .time-read .sep{font-size:15px;color:var(--muted-2)}
+  .transport.no-time .time-read{display:none}   /* window too narrow for it beside the buttons (fitTime) */
+  /* At rest: a 3px line, no dot, no time. Hovering the bar, or dragging: a 6px line, the dot and the time.
+     Only looks change, never sizes, so the bar and the videos never move. */
+  @media (hover:hover){
+    .seam-line,.seam-dot,.time-read{transition:transform .18s ease,opacity .18s ease}
+    .transport:not(:hover):not(.scrubbing) .seam-line{transform:scaleY(.5)}
+    .transport:not(:hover):not(.scrubbing) .seam-dot{transform:scale(0)}
+    .transport:not(:hover):not(.scrubbing) .time-read{opacity:0}
+  }
 
   .controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px}
-  .left-ctl{justify-self:start;display:flex;gap:8px}
+  .left-ctl{justify-self:start;display:flex;align-items:center;gap:8px}
   .center-cluster{display:flex;align-items:center;gap:10px;justify-self:center}
 
   .tbtn{background:#fff;border:1px solid var(--line);border-radius:10px;height:52px;min-width:52px;
@@ -348,10 +367,10 @@
     </div>
 
     <div class="transport">
-      <div class="scrub-row">
-        <div class="tc cur" id="curTime">00:00</div>
+      <div class="scrub-row" id="scrubRow">
+        <div class="seam-line" aria-hidden="true"><div class="seam-fill"></div></div>
+        <div class="seam-dot" aria-hidden="true"></div>
         <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Timeline">
-        <div class="tc" id="durTime">00:00</div>
       </div>
 
       <div class="controls">
@@ -375,6 +394,7 @@
           <div class="cc-group">
             <button class="tbtn cc" id="ccBtn" aria-pressed="false" aria-label="Captions" title="Captions (C)">CC</button>
           </div>
+          <div class="time-read"><span class="tc cur" id="curTime">00:00</span><span class="sep">/</span><span class="tc" id="durTime">00:00</span></div>
         </div>
 
         <div class="center-cluster">
@@ -475,7 +495,7 @@
   const A=document.getElementById('videoA'), B=document.getElementById('videoB');
   const stageA=document.getElementById('stageA'), stageB=document.getElementById('stageB');
   const stages=document.getElementById('stages'), divider=document.getElementById('divider');
-  const scrub=document.getElementById('scrub'), speed=document.getElementById('speed');
+  const scrub=document.getElementById('scrub'), speed=document.getElementById('speed'), scrubRow=document.getElementById('scrubRow');
   const pvA=document.getElementById('pvA'), pvB=document.getElementById('pvB');
   const thumbWrap=document.getElementById('thumbWrap'), thumbL=document.getElementById('thumbL'), thumbR=document.getElementById('thumbR');
   const transportEl=document.querySelector('.transport');
@@ -669,7 +689,7 @@
   function loadPair(vids,subs){            // one video plays alone in the left deck; two play side by side
     const two=vids.length>1;
     currentPair=two?[vids[0],vids[1]]:[vids[0]];
-    app.classList.toggle('solo',!two);
+    app.classList.toggle('solo',!two); requestAnimationFrame(fitTime);   // one video: fewer buttons, more room for the time
     loadCaptions(subs||[]);
     audioResolved=!two; audioCheckUntil=performance.now()+8000;   // one video: no sound source to pick
     loadInto(A,stageA,vids[0]);
@@ -912,16 +932,27 @@
   [A,B].forEach(v=>v.addEventListener('ended',()=>{if(A.ended||B.ended)pause();}));
 
   let scrubbing=false;
-  function paintScrub(){ scrub.style.setProperty('--p',(scrub.value/10)+'%'); }
-  scrub.addEventListener('input',()=>{scrubbing=true;seekTo((scrub.value/1000)*refDuration());paintScrub();scheduleThumbs();});
-  scrub.addEventListener('change',()=>scrubbing=false);
+  function setScrubbing(on){ scrubbing=on; transportEl.classList.toggle('scrubbing',on); }   // keeps the full timeline open while dragging, even off the bar
+  function paintScrub(){ scrubRow.style.setProperty('--p',(scrub.value/10)+'%'); }
+  // The time sits in the control row. When the window is too narrow for it beside the buttons (two videos with
+  // captions, below about 1300px), it steps aside instead of pushing the speed controls off the edge.
+  function fitTime(){
+    const c=transportEl.querySelector('.controls');
+    transportEl.classList.remove('no-time');
+    if(c.scrollWidth>c.clientWidth+1) transportEl.classList.add('no-time');
+  }
+  let barW=0;
+  try{ new ResizeObserver(es=>{ const w=es[0].contentRect.width; if(w!==barW){ barW=w; requestAnimationFrame(fitTime); } }).observe(transportEl); }
+  catch(_){ window.addEventListener('resize',fitTime); }
+  scrub.addEventListener('input',()=>{setScrubbing(true);seekTo((scrub.value/1000)*refDuration());paintScrub();scheduleThumbs();});
+  scrub.addEventListener('change',()=>setScrubbing(false));
   // click anywhere on the track (the grey part) to jump there — works alongside dragging
   scrub.addEventListener('pointerdown',e=>{
     const r=scrub.getBoundingClientRect();
     const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-    scrubbing=true; scrub.value=frac*1000; seekTo(frac*refDuration()); paintScrub(); scheduleThumbs();
+    setScrubbing(true); scrub.value=frac*1000; seekTo(frac*refDuration()); paintScrub(); scheduleThumbs();
   });
-  window.addEventListener('pointerup',()=>{ if(scrubbing){scrubbing=false;} clearThumbs(); });
+  window.addEventListener('pointerup',()=>{ if(scrubbing) setScrubbing(false); clearThumbs(); });
 
   /* ---------- timeline preview (hold the dot still ~0.27s to peek) ---------- */
   const HOLD_MS=275;
@@ -1073,7 +1104,7 @@
   function setCaptions(list){
     caps=(list&&list.length)?list:null; capIdx=-2;
     app.classList.toggle('has-cc',!!caps);
-    renderCaption(); requestAnimationFrame(zRefresh);
+    renderCaption(); requestAnimationFrame(zRefresh); requestAnimationFrame(fitTime);   // the CC button takes room from the time
   }
   function loadCaptions(files){
     const tok=++capToken; setCaptions(null);
@@ -1123,6 +1154,7 @@
       app.classList.add('fs-dock');
       app.style.setProperty('--barh',(transportEl.offsetHeight||157)+'px');   // captions lift by exactly the bar's height
     } else {
+      clearTimeout(hideBarTimer); hideBarTimer=0;
       app.classList.remove('fs-dock','dock-left','dock-bottom');
       app.classList.toggle('collapsed', wasCollapsed);
     }
@@ -1131,13 +1163,21 @@
   document.getElementById('fsBtn').addEventListener('click',toggleFs);
   document.addEventListener('fullscreenchange',onFsChange);
   document.addEventListener('webkitfullscreenchange',onFsChange);
-  // dock reveal: push the cursor to an edge to summon that bar; it stays while you're on it
-  const EDGE_LEFT=8, EDGE_BOTTOM=32;
+  // dock reveal: push the cursor to an edge to summon that bar; it stays while you're on it.
+  // The bottom bar also stays while the pointer is up to KEEP_ABOVE px above it, so reaching for the timeline on its
+  // top edge and overshooting a little doesn't drop it; and leaving that zone hides it only after HIDE_MS, so a
+  // pointer that comes straight back keeps it.
+  const EDGE_LEFT=8, EDGE_BOTTOM=32, KEEP_ABOVE=48, HIDE_MS=700;
+  let hideBarTimer=0;
+  function dockBottom(show){
+    if(show){ clearTimeout(hideBarTimer); hideBarTimer=0; app.classList.add('dock-bottom'); }
+    else if(app.classList.contains('dock-bottom') && !hideBarTimer)
+      hideBarTimer=setTimeout(()=>{ hideBarTimer=0; if(!scrubbing) app.classList.remove('dock-bottom'); },HIDE_MS);
+  }
   window.addEventListener('mousemove',e=>{
     if(!app.classList.contains('fs-dock'))return;
-    const ih=window.innerHeight, barH=(transportEl.offsetHeight||120)+10;
-    const showBottom=scrubbing || (ih-e.clientY)<=EDGE_BOTTOM || (app.classList.contains('dock-bottom') && (ih-e.clientY)<=barH);
-    app.classList.toggle('dock-bottom',showBottom);
+    const fromBottom=window.innerHeight-e.clientY, keep=(transportEl.offsetHeight||120)+KEEP_ABOVE;
+    dockBottom(scrubbing || fromBottom<=EDGE_BOTTOM || (app.classList.contains('dock-bottom') && fromBottom<=keep));
     const expanded=!app.classList.contains('collapsed');
     const keepLeft=expanded?270:60;
     const showLeft=e.clientX<=EDGE_LEFT || (app.classList.contains('dock-left') && e.clientX<=keepLeft);
@@ -1159,7 +1199,7 @@
     maybeAutoPickAudio();
     const t=masterTime(),d=refDuration();
     document.getElementById('curTime').textContent=fmt(t);
-    if(!scrubbing&&d>0){const p=t/d*100;scrub.value=p*10;scrub.style.setProperty('--p',p+'%');}
+    if(!scrubbing&&d>0){const p=t/d*100;scrub.value=p*10;scrubRow.style.setProperty('--p',p+'%');}
     updateNext(t,d);
   }
 
