@@ -24,24 +24,28 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;height:100vh;overflow:hidden}
-  .app{display:flex;height:100vh}
+  .app{display:flex;height:100vh;position:relative}
   button{font-family:inherit;cursor:pointer}
   svg{display:block}
 
   /* ============ SIDEBAR ============ */
-  .sidebar{width:264px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--line);
-    display:flex;flex-direction:column;transition:width .2s ease;overflow:hidden}
-  .app.collapsed .sidebar{width:52px}
-  .lib-head{padding:14px;border-bottom:1px solid var(--line)}
-  .head-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  /* A drawer over the videos, which dim and never resize. While you watch it waits off the left edge, in a window
+     and in fullscreen alike, and slides in when the pointer reaches that edge (.peek) or when opened (L). */
+  .sidebar{position:absolute;left:0;top:0;bottom:0;width:312px;z-index:150;background:var(--sidebar);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:10px 0 30px rgba(22,24,29,.14);
+    transform:none;visibility:visible;transition:transform .25s cubic-bezier(.22,.61,.36,1),box-shadow .25s,visibility 0s}
+  .app.collapsed:not(.peek) .sidebar{transform:translateX(-100%);box-shadow:none;visibility:hidden;
+    transition:transform .25s cubic-bezier(.22,.61,.36,1),box-shadow .25s,visibility 0s linear .25s}
+  .lib-head,.lib-tree{width:311px;flex-shrink:0}   /* laid out at full width even while closed, so nothing reflows as it opens */
+  .lib-head{padding:14px 12px 4px}
+  .head-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-left:1px}
   .hamburger{background:none;border:none;width:26px;height:26px;display:flex;align-items:center;
     justify-content:center;border-radius:6px;flex-shrink:0;transition:background .12s}
   .hamburger:hover{background:var(--line-2)}
   .hamburger svg{width:18px;height:18px;stroke:var(--txt)}
   .head-top .label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2)}
   .collapsible{transition:opacity .12s}
-  .app.collapsed .collapsible{opacity:0;pointer-events:none}
-  .app.collapsed .head-top .label{opacity:0}
+  /* before a library is open: the two start buttons */
   .open-btn{display:flex;align-items:center;gap:9px;width:100%;background:var(--txt);color:#fff;
     border:none;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;transition:opacity .15s;white-space:nowrap}
   .open-btn:hover{opacity:.88}
@@ -50,18 +54,28 @@
     border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:500;margin-top:8px;transition:.15s;white-space:nowrap}
   .load-two:hover{border-color:var(--muted-2)}
   .load-two svg{width:15px;height:15px;stroke:var(--muted);flex-shrink:0}
-  .lib-root{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .lib-tree{flex:1;overflow-y:auto;padding:8px}
-  .app.collapsed .lib-tree{opacity:0;pointer-events:none}
+  .app.has-lib .start-btns{display:none}
+  /* with a library open: one row naming it */
+  .src{display:none;align-items:center;gap:9px;padding:5px 5px 5px 11px;border:1px solid var(--line);border-radius:11px;background:#fff}
+  .app.has-lib .src{display:flex}
+  .src svg{width:17px;height:17px;stroke:var(--muted);flex-shrink:0}
+  .lib-root{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .txtbtn{border:none;background:none;border-radius:7px;padding:6px 9px;font-size:12.5px;font-weight:500;color:var(--muted);flex-shrink:0;transition:background .12s,color .12s}
+  .txtbtn:hover{background:var(--line-2);color:var(--txt)}
+  .lib-tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 8px 10px}
   .tree-empty{padding:36px 18px;text-align:center;color:var(--muted-2);font-size:13px;line-height:1.6}
+  /* a folder of folders: a small label; a folder of videos: a group that opens and closes */
+  .sect{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);padding:16px 10px 6px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none}
   .node{user-select:none}
-  .row{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:7px;font-size:13px;
+  .row{display:flex;align-items:center;gap:7px;padding:8px 10px 8px 8px;border-radius:8px;font-size:13.5px;
     color:var(--txt);cursor:pointer;transition:background .12s;white-space:nowrap;overflow:hidden}
   .row:hover{background:var(--line-2)}
+  .row.grp{font-weight:600}
   .row .chev{width:14px;height:14px;flex-shrink:0;stroke:var(--muted-2);transition:transform .15s}
   .node.open > .row .chev{transform:rotate(90deg)}
-  .row .ic{width:15px;height:15px;flex-shrink:0;stroke:var(--muted);fill:none}
-  .row .nm{overflow:hidden;text-overflow:ellipsis}
+  .row .nm{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .row .cnt{margin-left:auto;padding-left:8px;font-size:11.5px;font-weight:500;color:var(--muted);flex-shrink:0}
   /* long names: on hover the cut-off name slides sideways so it can be read in place */
   .row .nm.run{text-overflow:clip;
     -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 6px,#000 calc(100% - 16px),transparent 100%);
@@ -70,12 +84,35 @@
   .name-tip{position:fixed;z-index:200;max-width:300px;padding:6px 10px;border-radius:7px;background:var(--txt);color:#fff;
     font-size:12px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;pointer-events:none;opacity:0;transition:opacity .15s}
   .name-tip.on{opacity:1}
-  .row .badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted-2);flex-shrink:0;padding-left:6px}
-  .row.pair .ic{stroke:var(--accent)}
-  .row.active{background:var(--accent-soft);color:var(--accent)}
-  .row.active .ic{stroke:var(--accent)} .row.active .badge{color:var(--accent)}
-  .children{display:none;padding-left:14px;border-left:1px solid var(--line);margin-left:15px}
+  .children{display:none}
   .node.open > .children{display:block}
+  .children .children{padding-left:12px}
+  /* an entry: its status, then the title over a line of details, and a progress line once started */
+  .row.ent{align-items:flex-start;gap:11px;padding:8px 10px 9px 12px;margin-left:13px;border-radius:9px}
+  .lib-tree > .row.ent{margin-left:0}
+  .ent .st{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+  .ent .tx{flex:1;min-width:0}
+  .ent .t{display:flex;font-size:13.5px;font-weight:500;line-height:18px}
+  .ent .num{color:#8A8F98;margin-right:7px;flex-shrink:0}
+  .ent .nm{unicode-bidi:plaintext}
+  .ent .m{font-size:11.5px;line-height:15px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;min-height:15px}
+  .ent .m .cc{font-size:9.5px;font-weight:700;letter-spacing:.04em;border:1.2px solid var(--muted-2);color:var(--muted);border-radius:3px;padding:0 3px;margin-left:4px}
+  .ent.done .t{color:var(--muted)}
+  .ent .pbar{height:2px;background:var(--line);border-radius:2px;margin-top:7px;overflow:hidden}
+  .ent .pbar i{display:block;height:100%;background:var(--accent)}
+  .row.active{background:var(--accent-soft)}
+  .row.active:hover{background:#FAE1E2}
+  .row.active .m{color:#9B4A4D}
+  .row.active .pbar{background:#F3C9CB}
+  /* opened over loaded videos, the drawer dims them; a click there closes it */
+  .scrim{position:absolute;inset:0;z-index:66;background:rgba(11,11,13,.34);opacity:0;pointer-events:none;transition:opacity .2s}
+  .app:not(.collapsed) #stageA.loaded ~ .scrim,.app.peek #stageA.loaded ~ .scrim{opacity:1;pointer-events:auto}
+  /* the tab that shows as the pointer nears the left edge: hover or click it to bring the drawer in */
+  .drawer-tab{position:absolute;left:0;top:50%;z-index:140;width:26px;height:64px;margin-top:-32px;padding:0;border:none;border-radius:0 10px 10px 0;
+    background:rgba(11,11,13,.62);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    opacity:0;pointer-events:none;transform:translateX(-8px);transition:opacity .2s,transform .2s}
+  .drawer-tab svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+  .app.near-left.collapsed:not(.peek) .drawer-tab{opacity:1;pointer-events:auto;transform:none}
 
   /* ============ WORKSPACE ============ */
   .workspace{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
@@ -83,9 +120,7 @@
   /* fullscreen: whole app goes fullscreen; bars become dockable overlays */
   .app:fullscreen, .app:-webkit-full-screen{width:100%;height:100%;background:#000}
   .app.fs-dock .stages{background:#000}
-  .app.fs-dock .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:120;
-    transform:translateX(-100%);transition:transform .3s cubic-bezier(.22,.61,.36,1), width .2s ease}
-  .app.fs-dock.dock-left .sidebar{transform:translateX(0)}
+  .app.fs-dock .sidebar{position:fixed;z-index:120}
   .app.fs-dock .transport{position:fixed;left:0;right:0;bottom:0;z-index:120;background:var(--bg);
     transform:translateY(100%);transition:transform .45s cubic-bezier(.22,.61,.36,1);box-shadow:0 -6px 20px rgba(0,0,0,.18)}
   .app.fs-dock.dock-bottom .transport{transform:translateY(0)}
@@ -136,7 +171,7 @@
   .v-divider:hover::after,.v-divider.dragging::after{background:var(--muted)}
 
   /* ============ TRANSPORT ============ */
-  .transport{position:relative;z-index:70;padding:14px 24px 16px}   /* above the videos, so the timeline can sit on the seam */
+  .transport{position:relative;z-index:70;padding:10px 18px}   /* above the videos, so the timeline can sit on the seam */
   /* The timeline runs along the seam between the videos and the bar, edge to edge. The line and its dot are plain
      elements; the range input on top of them is invisible and only takes clicks, drags and keys, so every browser
      draws the line in the same place. Its 18px band, centred on the seam, is the grab area. */
@@ -153,10 +188,10 @@
   .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:1px;height:18px;background:transparent}   /* 1px: the value follows the pointer exactly, edge to edge */
   .scrub::-moz-range-thumb{width:1px;height:18px;border:none;background:transparent}
   /* the time, in the control row */
-  .time-read{display:flex;align-items:center;gap:6px;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2);white-space:nowrap}
-  .tc{font-family:var(--mono);font-size:15px;line-height:18px;color:var(--muted)}
+  .time-read{display:flex;align-items:center;gap:6px;padding-left:6px;white-space:nowrap}
+  .tc{font-family:var(--mono);font-size:14.5px;line-height:18px;color:var(--muted)}
   .tc.cur{color:var(--txt)}
-  .time-read .sep{font-size:15px;color:var(--muted-2)}
+  .time-read .sep{font-size:14.5px;color:var(--muted-2)}
   .transport.no-time .time-read{display:none}   /* window too narrow for it beside the buttons (fitTime) */
   /* At rest: a 3px line, no dot, no time. Hovering the bar, or dragging: a 6px line, the dot and the time.
      Only looks change, never sizes, so the bar and the videos never move. */
@@ -167,58 +202,61 @@
     .transport:not(:hover):not(.scrubbing) .time-read{opacity:0}
   }
 
-  .controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px}
-  .left-ctl{justify-self:start;display:flex;align-items:center;gap:8px}
-  .center-cluster{display:flex;align-items:center;gap:10px;justify-self:center}
+  .controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;min-height:48px}
+  .left-ctl{justify-self:start;display:flex;align-items:center;gap:4px}
+  .center-cluster{display:flex;align-items:center;gap:4px;justify-self:center}
 
-  .tbtn{background:#fff;border:1px solid var(--line);border-radius:10px;height:52px;min-width:52px;
-    display:flex;align-items:center;justify-content:center;gap:7px;transition:.12s;padding:0 14px}
-  .tbtn:hover{border-color:var(--muted-2);background:#fafafa}
-  .tbtn svg{width:25px;height:25px;stroke:var(--txt);fill:none}
-  .tbtn .sec{font-family:var(--mono);font-size:17px;color:var(--muted);font-weight:500}
-  #back,#fwd,#fwd15{width:83.203125px;padding:0}   /* pinned to their exact size before the bigger text */
-  #fsBtn,#swapBtn,#refreshBtn{width:52px;padding:0}   /* same: bigger icons, same button */
-  .tbtn.play{width:62px;height:62px;background:var(--accent);border-color:var(--accent);padding:0}
+  /* buttons: plain icons with no box, a soft background on hover; play is the one strong colour */
+  .tbtn{background:transparent;border:none;border-radius:9px;height:40px;min-width:40px;color:var(--txt);
+    display:flex;align-items:center;justify-content:center;gap:6px;transition:background .12s,color .12s;padding:0 9px}
+  .tbtn:hover{background:var(--line-2)}
+  .tbtn svg{width:22px;height:22px;stroke:currentColor;fill:none}
+  .tbtn .sec{font-family:var(--mono);font-size:15px;color:var(--muted);font-weight:500}
+  .tbtn.play{width:48px;height:48px;border-radius:50%;background:var(--accent);padding:0;margin:0 8px}
   .tbtn.play:hover{background:#d83b40}
-  .tbtn.play svg{stroke:#fff;fill:#fff;width:30px;height:30px}
+  .tbtn.play svg{stroke:#fff;fill:#fff;width:20px;height:20px}
   .tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
-  .audio{display:flex;align-items:center;gap:9px;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2)}
-  .audio .spk{width:23px;height:23px;stroke:var(--muted);flex-shrink:0}
-  .spk-btn{background:none;border:none;padding:0;margin:0;display:flex;border-radius:6px}
-  .spk-btn:hover .spk{stroke:var(--txt)}
-  .spk-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .spk .slash{display:none}
   .app.muted .spk .slash{display:inline}
-  .app.muted .seg-group{opacity:.45}
-  .seg-group{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-  .seg{background:#fff;border:none;width:42px;height:46px;font-family:var(--mono);font-size:18px;font-weight:500;color:var(--muted);transition:.12s}
-  .seg+.seg{border-left:1px solid var(--line)}
-  .seg:hover{background:var(--line-2)}
-  .seg.active{background:var(--txt);color:#fff}
-  .seg:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .app.muted #muteBtn{color:var(--muted)}
 
-  .speed-block{display:flex;align-items:center;gap:14px;justify-self:end;flex-wrap:wrap;justify-content:flex-end}
-  .speed-ctl{display:flex;align-items:center;gap:12px}
-  .speed-ctl .lab{font-family:var(--mono);font-size:14.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
-    cursor:pointer;user-select:none;-webkit-user-select:none;border-radius:6px;padding:4px 6px;margin:-4px -6px;transition:color .12s,background .12s}
-  .speed-ctl .lab:hover{color:var(--txt)}
-  .speed{width:175px}
-  .speed::-webkit-slider-runnable-track{height:5px;border-radius:100px;background:linear-gradient(90deg,var(--spc,var(--txt)) 0 var(--sp,40%),var(--line) var(--sp,40%))}
-  .speed::-moz-range-track{height:5px;border-radius:100px;background:var(--line)}
-  .speed::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:4px;background:var(--spc,var(--txt));margin-top:-5.5px;transition:transform .1s}
-  .speed::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:4px;background:var(--spc,var(--txt))}
+  /* speed: slider, value and presets on one line */
+  .speed-block{display:flex;align-items:center;gap:4px;justify-self:end}
+  .speed-ctl{display:flex;align-items:center;gap:10px;margin-right:6px}
+  .speed{width:120px}
+  .speed::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--spc,var(--txt)) 0 var(--sp,40%),var(--line) var(--sp,40%))}
+  .speed::-moz-range-track{height:4px;border-radius:4px;background:var(--line)}
+  .speed::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:4px;background:var(--spc,var(--txt));margin-top:-5px;transition:transform .1s}
+  .speed::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:4px;background:var(--spc,var(--txt))}
   .speed::-webkit-slider-thumb:hover{transform:scale(1.12)}
-  .speed-val{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--txt);min-width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:7px 6px;line-height:20px;
-    transition:color .12s,border-color .12s,box-shadow .12s}
-  /* speed arrow mode: armed by clicking "speed" or the slider; ← → then fine-tune speed */
-  .speed-ctl.armed .lab{color:var(--accent);background:var(--accent-soft)}
+  .speed-val{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--txt);min-width:58px;height:34px;padding:0 6px;border:none;border-radius:8px;
+    background:transparent;display:flex;align-items:center;justify-content:center;transition:color .12s,background .12s}
+  .speed-val:hover{background:var(--line-2)}
+  /* speed arrow mode: armed by clicking the value or the slider; ← → then fine-tune speed */
   .speed-ctl.armed .speed{--spc:var(--accent)}
-  .speed-ctl.armed .speed-val{color:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .presets{display:flex;gap:6px;margin-left:8px}
-  .preset{font-family:var(--mono);font-size:17px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:7px;padding:0;height:36px;min-width:58px;text-align:center;transition:.12s}
-  .preset:hover{border-color:var(--muted-2);color:var(--txt)}
-  .preset.active{border-color:var(--txt);color:var(--txt);background:#F4F4F5;font-weight:500}
+  .speed-ctl.armed .speed-val{color:var(--accent);background:var(--accent-soft)}
+  .presets{display:flex;background:var(--line-2);border-radius:9px;padding:3px;gap:2px}
+  .preset{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:7px;height:30px;min-width:38px;padding:0 8px;transition:background .12s,color .12s}
+  .preset:hover{color:var(--txt)}
+  .preset.active{background:#fff;color:var(--txt);box-shadow:0 1px 2px rgba(22,24,29,.14)}
+  .vsep{width:1px;height:22px;background:var(--line);margin:0 8px;flex-shrink:0}
+
+  /* ⋯ menu: the controls a lecture rarely needs */
+  .more{position:relative}
+  .more-menu{position:absolute;right:-6px;bottom:50px;width:224px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 16px 40px rgba(22,24,29,.16);padding:6px;display:none;z-index:90}
+  .more.open .more-menu{display:block}
+  .more.open #moreBtn{background:var(--line-2)}
+  .mi{display:flex;align-items:center;gap:11px;width:100%;border:none;background:none;border-radius:8px;padding:8px 10px;min-height:38px;
+    font-size:13.5px;color:var(--txt);text-align:left;white-space:nowrap}
+  button.mi:hover,button.mi:focus-visible{background:var(--line-2);outline:none}
+  .mi svg{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .seg-group{display:flex;background:var(--line-2);border-radius:8px;padding:2px;gap:2px;margin-left:auto}
+  .seg{border:none;background:transparent;height:26px;min-width:30px;padding:0 8px;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--muted)}
+  .seg:hover{color:var(--txt)}
+  .seg.active{background:#fff;color:var(--txt);box-shadow:0 1px 2px rgba(22,24,29,.14)}
+  .seg:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .app.muted .seg-group{opacity:.45}
 
   @media (max-width:900px){
     .controls{grid-template-columns:1fr;justify-items:center;gap:14px}
@@ -227,11 +265,12 @@
   body.resizing, body.resizing *{cursor:col-resize !important;user-select:none !important}
 
   /* captions (CC): the button and the strip exist only for pairs whose folder has an .srt/.vtt */
-  .cc-group{display:none;align-items:center;margin-left:2px;padding-left:12px;border-left:1px solid var(--line-2)}
+  .cc-group{display:none;align-items:center}
   .app.has-cc .cc-group{display:flex}
-  .tbtn.cc{width:52px;padding:0;font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.04em;color:var(--muted)}
-  .tbtn.cc.on{background:var(--txt);border-color:var(--txt);color:#fff}
-  .tbtn.cc.on:hover{background:#2a2d34}
+  .tbtn.cc{color:var(--muted)}
+  .tbtn.cc svg{width:24px;height:24px}
+  .tbtn.cc.on{color:var(--txt);background:var(--line-2)}
+  .tbtn.cc.on:hover{background:var(--line)}
   .cc-strip{display:none;position:absolute;left:0;right:0;bottom:20px;z-index:50;padding:0 56px;font-size:26px;
     align-items:flex-end;justify-content:center;text-align:center;pointer-events:none;
     transition:transform .45s cubic-bezier(.22,.61,.36,1)}   /* lives inside the video you hear; floats, so it never resizes anything */
@@ -250,17 +289,16 @@
   #pvA,#pvB{position:fixed;left:-99999px;top:0;width:160px;height:90px;opacity:0;pointer-events:none}
 
   /* help button (sidebar footer) + shortcuts overlay */
-  .side-foot{border-top:1px solid var(--line);padding:10px}
-  .help-link{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;
+  .side-foot{border-top:1px solid var(--line);height:68px;box-sizing:border-box;padding:0 10px;display:flex;align-items:center;gap:2px;flex-shrink:0}   /* 68px: the bottom bar's height, so the two sit on one line */
+  .help-link{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:none;
     padding:9px 7px;border-radius:7px;color:var(--muted);font-size:12.5px;font-weight:500;
     white-space:nowrap;transition:background .12s,color .12s}
   .help-link:hover{background:var(--line-2);color:var(--txt)}
   .help-link svg{width:18px;height:18px;flex-shrink:0;stroke:var(--muted)}
   .help-link:hover svg{stroke:var(--txt)}
   .help-link span{transition:opacity .12s}
-  .app.collapsed .side-foot{padding:10px 0;border-top:none}
-  .app.collapsed .help-link{justify-content:center;padding:9px 0}
-  .app.collapsed .help-link span{display:none}
+  #loadMoreBtn{display:none}
+  .app.has-lib #loadMoreBtn{display:flex}
   .help-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
     background:rgba(22,24,29,.32);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
     opacity:0;pointer-events:none;transition:opacity .22s ease}
@@ -304,14 +342,26 @@
   .next-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   .app.fs-dock.dock-bottom .next-btn{bottom:calc(var(--barh,160px) + 14px)}   /* fullscreen: rise above the bar as it slides up */
 
+  /* resume note: bottom-left of the videos, beside the lighten button */
+  .resume-note{position:absolute;left:46px;bottom:10px;z-index:60;display:flex;align-items:center;gap:6px;height:28px;padding:0 3px 0 11px;border-radius:8px;
+    background:rgba(11,11,13,.68);color:#fff;font-size:12.5px;font-weight:500;white-space:nowrap;
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    opacity:0;visibility:hidden;transform:translateY(6px);
+    transition:opacity .25s ease,transform .25s ease,visibility 0s linear .25s,bottom .45s cubic-bezier(.22,.61,.36,1)}
+  .resume-note.show{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+  .resume-note button{border:none;background:rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:600;border-radius:6px;height:22px;padding:0 8px}
+  .resume-note button:hover{background:rgba(255,255,255,.28)}
+  .app.fs-dock.dock-bottom .resume-note{bottom:calc(var(--barh,160px) + 10px)}
+
   /* ============ ONE VIDEO ============ */
   /* a lecture with a single video: it fills the stage, and the second deck and the two-video controls step aside */
-  .app.solo #stageB,.app.solo #divider,.app.solo #swapBtn,.app.solo .seg-group,.app.solo #thumbWrap .thumb + .thumb{display:none}
+  .app.solo #stageB,.app.solo #divider,.app.solo #swapBtn,.app.solo .mi-audio,.app.solo #thumbWrap .thumb + .thumb{display:none}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <!-- ============ SIDEBAR ============ -->
+  <button class="drawer-tab" id="drawerTab" aria-label="Show library" title="Library (L)"><svg viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="17" x2="19" y2="17"/></svg></button>
   <aside class="sidebar">
     <div class="lib-head">
       <div class="head-top">
@@ -321,15 +371,21 @@
         <span class="label">Library</span>
       </div>
       <div class="collapsible">
-        <button class="open-btn" id="openBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-          Open library folder
-        </button>
-        <button class="load-two" id="loadTwoBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="9" height="12" rx="1.5"/><rect x="13" y="6" width="9" height="12" rx="1.5"/></svg>
-          Load videos
-        </button>
-        <div class="lib-root" id="libRoot"></div>
+        <div class="start-btns">
+          <button class="open-btn" id="openBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Open library folder
+          </button>
+          <button class="load-two" id="loadTwoBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="9" height="12" rx="1.5"/><rect x="13" y="6" width="9" height="12" rx="1.5"/></svg>
+            Load videos
+          </button>
+        </div>
+        <div class="src">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="lib-root" id="libRoot"></span>
+          <button class="txtbtn" id="changeBtn" title="Open another library folder">Change</button>
+        </div>
       </div>
       <input type="file" id="libInput" webkitdirectory directory multiple hidden>
       <input type="file" id="twoInput" accept="video/*,.srt,.vtt" multiple hidden>
@@ -338,6 +394,10 @@
       <div class="tree-empty">No library open yet.<br>Open a folder of videos, or load one or two videos directly.</div>
     </div>
     <div class="side-foot">
+      <button class="help-link" id="loadMoreBtn" title="Play one or two videos from anywhere">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Load videos</span>
+      </button>
       <button class="help-link" id="helpBtn" aria-label="Keyboard shortcuts">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span>Shortcuts</span>
@@ -360,6 +420,9 @@
         <div class="placeholder"><span class="tag">Deck R</span><span class="hint">Click to open a library folder</span></div>
       </div>
       <!-- next entry in the same folder; shows during the last seconds -->
+      <!-- reopening a started video picks up where you left off; this says so, with a way back to the start -->
+      <div class="resume-note" id="resumeNote" aria-live="polite"><span id="resumeText"></span><button id="startOverBtn">Start over</button></div>
+      <div class="scrim" id="scrim"></div>
       <button class="next-btn" id="nextBtn" aria-label="Next video">
         <svg viewBox="0 0 24 24"><polyline points="4 7 9 12 4 17"/><polyline points="11 7 16 12 11 17"/><line x1="20" y1="6.5" x2="20" y2="17.5"/></svg>
         <span>Next</span>
@@ -375,41 +438,26 @@
 
       <div class="controls">
         <div class="left-ctl">
-          <button class="tbtn" id="fsBtn">
-            <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-          </button>
-          <button class="tbtn" id="swapBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16"/><path d="M16 4l4 4-4 4"/><path d="M20 16H4"/><path d="M8 12l-4 4 4 4"/></svg>
-          </button>
-          <button class="tbtn" id="refreshBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-          </button>
-          <div class="audio">
-            <button class="spk-btn" id="muteBtn" aria-label="Mute" aria-pressed="false" title="Mute (M)"><svg class="spk" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg></button>
-            <div class="seg-group">
-              <button class="seg active" data-side="L">L</button>
-              <button class="seg" data-side="R">R</button>
-            </div>
-          </div>
+          <button class="tbtn" id="muteBtn" aria-label="Mute" aria-pressed="false" title="Mute (M)"><svg class="spk" viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg></button>
           <div class="cc-group">
-            <button class="tbtn cc" id="ccBtn" aria-pressed="false" aria-label="Captions" title="Captions (C)">CC</button>
+            <button class="tbtn cc" id="ccBtn" aria-pressed="false" aria-label="Captions" title="Captions (C)"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M10.4 10.1a2.4 2.4 0 1 0 0 3.8"/><path d="M16.6 10.1a2.4 2.4 0 1 0 0 3.8"/></svg></button>
           </div>
           <div class="time-read"><span class="tc cur" id="curTime">00:00</span><span class="sep">/</span><span class="tc" id="durTime">00:00</span></div>
         </div>
 
         <div class="center-cluster">
-          <button class="tbtn" id="back">
+          <button class="tbtn" id="back" aria-label="Back 10 seconds">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
             <span class="sec">10s</span>
           </button>
-          <button class="tbtn play" id="play">
+          <button class="tbtn play" id="play" aria-label="Play">
             <svg viewBox="0 0 24 24" id="playIcon"><polygon points="6 4 20 12 6 20" fill="#fff" stroke="none"/></svg>
           </button>
-          <button class="tbtn" id="fwd">
+          <button class="tbtn" id="fwd" aria-label="Forward 10 seconds">
             <span class="sec">10s</span>
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 7 18 12 13 17"/><polyline points="6 7 11 12 6 17"/></svg>
           </button>
-          <button class="tbtn" id="fwd15">
+          <button class="tbtn" id="fwd15" aria-label="Forward 15 minutes">
             <span class="sec">15m</span>
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 7 20 12 15 17"/><polyline points="8 7 13 12 8 17"/><polyline points="1 7 6 12 1 17"/></svg>
           </button>
@@ -417,15 +465,33 @@
 
         <div class="speed-block">
           <div class="speed-ctl">
-            <span class="lab" title="Click, then ← → to fine-tune speed (hold ⇧ for bigger steps)">speed</span>
             <input type="range" class="speed" id="speed" min="0.1" max="3" step="0.05" value="1" aria-label="Playback speed">
-            <div class="speed-val" id="speedVal">1.00×</div>
+            <button class="speed-val" id="speedVal" title="Click, then ← → to fine-tune speed (hold ⇧ for bigger steps)">1.00×</button>
           </div>
           <div class="presets" id="presets">
             <button class="preset active" data-s="1">1×</button>
             <button class="preset" data-s="1.5">1.5×</button>
             <button class="preset" data-s="2">2×</button>
           </div>
+          <span class="vsep"></span>
+          <div class="more" id="more">
+            <button class="tbtn" id="moreBtn" aria-label="More" aria-haspopup="menu" aria-expanded="false" title="More">
+              <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+            </button>
+            <div class="more-menu" id="moreMenu" role="menu">
+              <button class="mi" id="swapBtn" role="menuitem"><svg viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M16 4l4 4-4 4"/><path d="M20 16H4"/><path d="M8 12l-4 4 4 4"/></svg>Swap sides</button>
+              <div class="mi mi-audio"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>Sound from
+                <div class="seg-group">
+                  <button class="seg active" data-side="L">L</button>
+                  <button class="seg" data-side="R">R</button>
+                </div>
+              </div>
+              <button class="mi" id="refreshBtn" role="menuitem"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>Reload videos</button>
+            </div>
+          </div>
+          <button class="tbtn" id="fsBtn" aria-label="Fullscreen" title="Fullscreen (F)">
+            <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -459,18 +525,18 @@
           <div class="help-row"><kbd>`</kbd><kbd>§</kbd><span class="desc">1× normal</span></div>
           <div class="help-row"><kbd>1</kbd><span class="sep">–</span><kbd>9</kbd><span class="desc">1.1× – 1.9×</span></div>
           <div class="help-row"><kbd>0</kbd><span class="desc">2×</span></div>
-          <div class="help-row"><span class="gesture">Click speed, then</span><kbd>←</kbd><kbd>→</kbd><span class="desc">±0.05×</span></div>
+          <div class="help-row"><span class="gesture">Click the speed, then</span><kbd>←</kbd><kbd>→</kbd><span class="desc">±0.05×</span></div>
           <div class="help-row"><span class="gesture">…holding</span><kbd>⇧</kbd><span class="desc">±0.10×</span></div>
         </section>
         <section class="help-sec">
           <h3>View</h3>
           <div class="help-row"><kbd>F</kbd><span class="desc">Fullscreen</span></div>
-          <div class="help-row"><kbd>S</kbd><span class="desc">Swap sides</span></div>
-          <div class="help-row"><kbd>A</kbd><span class="desc">Audio L / R</span></div>
+          <div class="help-row"><kbd>S</kbd><span class="desc">Swap sides (⋯)</span></div>
+          <div class="help-row"><kbd>A</kbd><span class="desc">Sound from L / R (⋯)</span></div>
           <div class="help-row"><kbd>M</kbd><span class="desc">Mute / unmute</span></div>
           <div class="help-row"><kbd>C</kbd><span class="desc">Captions on / off</span></div>
           <div class="help-row"><kbd>L</kbd><span class="desc">Toggle sidebar</span></div>
-          <div class="help-row"><kbd>R</kbd><span class="desc">Reload pair</span></div>
+          <div class="help-row"><kbd>R</kbd><span class="desc">Reload videos (⋯)</span></div>
         </section>
         <section class="help-sec">
           <h3>Mouse</h3>
@@ -504,35 +570,87 @@
   const DRIFT=0.5, SYNC_MS=2000;
   let playing=false, activeRow=null, audioDeck='A', swapped=false, currentPair=null, audioResolved=false, audioCheckUntil=0, clickTimer=0;
 
-  /* ---------- sidebar collapse ---------- */
-  document.getElementById('ham').addEventListener('click',()=>app.classList.toggle('collapsed'));
+  /* ---------- sidebar: a drawer that waits off the left edge while you watch ---------- */
+  // Open (not .collapsed) it stays until closed: a choice in it, a click on the dimmed videos, ☰, or L.
+  // Peeking (.peek) it came in because the pointer reached the left edge, or the tab that shows as the pointer
+  // nears it; it stays while the pointer is on it and slides away PEEK_MS after the pointer leaves.
+  const libTreeEl=document.getElementById('libTree'), libInput=document.getElementById('libInput'), twoInput=document.getElementById('twoInput');
+  const EDGE_LEFT=8, NEAR_LEFT=56, PEEK_KEEP=330, PEEK_MS=350;
+  let peekTimer=0;
+  const drawerShown=()=>!app.classList.contains('collapsed') || app.classList.contains('peek');
+  function peekDrawer(show){
+    if(show){ clearTimeout(peekTimer); peekTimer=0; app.classList.add('peek'); }
+    else if(app.classList.contains('peek') && !peekTimer) peekTimer=setTimeout(()=>{ peekTimer=0; app.classList.remove('peek'); },PEEK_MS);
+  }
+  function showDrawer(){ clearTimeout(peekTimer); peekTimer=0; app.classList.remove('collapsed','peek','near-left'); }
+  function hideDrawer(){ clearTimeout(peekTimer); peekTimer=0; app.classList.add('collapsed'); app.classList.remove('peek','near-left'); }
+  function toggleDrawer(){ if(drawerShown()) hideDrawer(); else showDrawer(); }
+  window.addEventListener('mousemove',e=>{
+    if(!app.classList.contains('collapsed')) return;
+    app.classList.toggle('near-left',e.clientX<=NEAR_LEFT);
+    peekDrawer(e.clientX<=EDGE_LEFT || (app.classList.contains('peek') && e.clientX<=PEEK_KEEP));
+  });
+  const drawerTab=document.getElementById('drawerTab');
+  drawerTab.addEventListener('mouseenter',()=>peekDrawer(true));
+  drawerTab.addEventListener('click',showDrawer);
+  document.getElementById('ham').addEventListener('click',toggleDrawer);
+  document.getElementById('scrim').addEventListener('click',hideDrawer);
 
   /* ---------- ad-hoc load: one video, or two side by side ---------- */
-  document.getElementById('loadTwoBtn').addEventListener('click',()=>document.getElementById('twoInput').click());
-  document.getElementById('twoInput').addEventListener('change',e=>{
+  document.getElementById('loadTwoBtn').addEventListener('click',()=>twoInput.click());
+  document.getElementById('loadMoreBtn').addEventListener('click',()=>twoInput.click());
+  twoInput.addEventListener('change',e=>{
     const vids=[...e.target.files].filter(f=>VIDEO_RE.test(f.name));
     const subs=[...e.target.files].filter(f=>CAP_RE.test(f.name));
     if(!vids.length){alert('Pick one or two video files (Cmd-click to select two).');return;}
-    if(activeRow){activeRow.classList.remove('active');activeRow=null;}
-    loadPair(vids.slice(0,2),subs);
+    loadPair(vids.slice(0,2),subs,null);
   });
 
+  /* ---------- what you've watched: kept in this browser only, never in your files ---------- */
+  // watch[entry] = {t: seconds reached, done: finished at least once, at: when}; len[file] = its length in seconds,
+  // so the sidebar shows lengths without reading every file on each visit. An entry is known by its files' names and sizes.
+  const WATCH_KEY='lp.watch.v1', LEN_KEY='lp.len.v1';
+  const loadJSON=k=>{ try{ const o=JSON.parse(localStorage.getItem(k)||'{}'); return o&&typeof o==='object'?o:{}; }catch(_){ return {}; } };
+  const saveJSON=(k,o)=>{ try{ localStorage.setItem(k,JSON.stringify(o)); }catch(_){} };
+  const watch=loadJSON(WATCH_KEY), lenCache=loadJSON(LEN_KEY);
+  const fileKey=f=>f.name+':'+f.size;
+  const entryKey=vids=>vids.map(fileKey).sort().join('|');
+  let lenSaveTimer=0;
+  function noteLength(f,d){
+    if(!f || !isFinite(d) || d<=0) return;
+    lengths.set(f,d); lenCache[fileKey(f)]=Math.round(d*10)/10;
+    clearTimeout(lenSaveTimer); lenSaveTimer=setTimeout(()=>saveJSON(LEN_KEY,lenCache),500);
+  }
+  function lenOf(f){
+    let d=lengths.get(f);
+    if(!isFinite(d) && isFinite(lenCache[fileKey(f)])){ d=lenCache[fileKey(f)]; lengths.set(f,d); }
+    return d;
+  }
+  function pruneWatch(){   // keeps the store small: past 4000 entries, the oldest 1000 go
+    const ks=Object.keys(watch); if(ks.length<=4000) return;
+    ks.sort((a,b)=>(watch[a].at||0)-(watch[b].at||0)).slice(0,1000).forEach(k=>delete watch[k]);
+  }
+
   /* ---------- library folder ---------- */
-  document.getElementById('openBtn').addEventListener('click',()=>document.getElementById('libInput').click());
+  document.getElementById('openBtn').addEventListener('click',()=>libInput.click());
+  document.getElementById('changeBtn').addEventListener('click',()=>libInput.click());
   let libToken=0;
-  document.getElementById('libInput').addEventListener('change',async e=>{
+  libInput.addEventListener('change',async e=>{
     const files=[...e.target.files]; if(!files.length) return;
     const tree=buildTree(files);
     const topName=Object.keys(tree.children)[0]||'Library';
-    document.getElementById('libRoot').textContent='/ '+topName;
+    document.getElementById('libRoot').textContent=topName;
+    app.classList.add('has-lib');
     const top=tree.children[topName]||tree, tok=++libToken;
-    // Folders with three or more videos are grouped by length, so read those lengths first.
-    const toRead=[]; (function walk(n){ if(n.videos.length>2) toRead.push(...n.videos); Object.values(n.children).forEach(walk); })(top);
+    // Folders with three or more videos are grouped by length, so read those lengths first (unless known from before).
+    const toRead=[]; (function walk(n){ if(n.videos.length>2) toRead.push(...n.videos.filter(f=>!isFinite(lenOf(f)))); Object.values(n.children).forEach(walk); })(top);
     if(toRead.length){
-      document.getElementById('libTree').innerHTML='<div class="tree-empty">Reading video lengths…</div>';
-      for(const f of toRead){ lengths.set(f,await readLength(f)); if(tok!==libToken) return; }   // one at a time: easy on the disk
+      libTreeEl.innerHTML='<div class="tree-empty">Reading video lengths…</div>';
+      for(const f of toRead){ noteLength(f,await readLength(f)); if(tok!==libToken) return; }   // one at a time: easy on the disk
     }
     renderTree(top);
+    showDrawer();                        // show the new library
+    fillLengths(tok);
   });
   // A video's length in seconds, read from the file's header (NaN when the browser can't read it).
   const lengths=new WeakMap();
@@ -546,6 +664,15 @@
       v.onloadedmetadata=()=>fin(v.duration); v.onerror=()=>fin(NaN);
       v.src=url;
     });
+  }
+  // After the list is up, read the lengths it doesn't know yet, one file at a time, filling in each row as it comes.
+  async function fillLengths(tok){
+    for(const row of libTreeEl.querySelectorAll('.row.ent')){
+      const f=row._vids[0];
+      if(isFinite(lenOf(f))){ paintEntry(row); continue; }   // learned meanwhile, from another row's file
+      const d=await readLength(f); if(tok!==libToken) return;
+      noteLength(f,d); paintEntry(row);
+    }
   }
   function buildTree(files){
     const root={children:{},videos:[],subs:[]};
@@ -561,48 +688,56 @@
   function sortedChildren(n){return Object.values(n.children).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));}
   const baseName=n=>n.replace(/\.[^.]+$/,'');
   function sortedVideos(n){return n.videos.slice().sort((a,b)=>baseName(a.name).localeCompare(baseName(b.name),undefined,{numeric:true}));}   // by title, so "Lecture 1" comes before "Lecture 1.5"
+
+  // What each folder becomes in the sidebar. A folder with no sub-folders and one or two videos is one entry: one video
+  // plays alone, two play side by side. A folder holding entries is a group, a heading that opens and closes. A folder
+  // holding only folders is a section, a small label with its folders listed under it.
+  const isEntryFolder=n=>!Object.keys(n.children).length && n.videos.length>0 && n.videos.length<=2;
+  const holdsEntries=n=>n.videos.length>0 || Object.values(n.children).some(isEntryFolder);
+  function hasVideos(n){ return n.videos.length>0 || Object.values(n.children).some(hasVideos); }
   function renderTree(top){
-    const host=document.getElementById('libTree'); host.innerHTML='';
-    const kids=sortedChildren(top);
-    if(!kids.length && !top.videos.length){host.innerHTML='<div class="tree-empty">No videos found in this folder.</div>';return;}
+    libTreeEl.innerHTML='';
+    if(!hasVideos(top)){ libTreeEl.innerHTML='<div class="tree-empty">No videos found in this folder.</div>'; return; }
     const frag=document.createDocumentFragment();
-    for(const c of kids) frag.appendChild(renderNode(c));
-    for(const r of folderEntries(top,'(root pair)')) frag.appendChild(r);
-    host.appendChild(frag);
+    renderInto(frag,top);
+    libTreeEl.appendChild(frag);
+    libTreeEl.querySelectorAll('.grp-node').forEach(paintGroup);
   }
-  // A folder with no sub-folders and one or two videos is one entry, named after the folder: one video
-  // plays alone, two play side by side. Any other folder is a category: its sub-folders, then its own videos.
-  function renderNode(node){
-    const kids=sortedChildren(node), n=node.videos.length, hasKids=kids.length>0;
-    const wrap=document.createElement('div'); wrap.className='node';
-    if(hasKids || n>2){
-      const row=document.createElement('div'); row.className='row';
-      row.innerHTML='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg><svg class="ic" viewBox="0 0 24 24" fill="none" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm"></span>';
-      row.querySelector('.nm').textContent=node.name;
-      const cw=document.createElement('div'); cw.className='children';
-      for(const c of kids) cw.appendChild(renderNode(c));
-      for(const r of folderEntries(node,'• both clips here')) cw.appendChild(r);
-      row.addEventListener('click',()=>wrap.classList.toggle('open'));
-      wrap.appendChild(row); wrap.appendChild(cw);
-    } else if(n){ wrap.appendChild(entryRow(sortedVideos(node),node.subs,node.name)); }
-    else { return document.createDocumentFragment(); }
+  function renderInto(host,node){
+    for(const c of sortedChildren(node)){
+      if(!hasVideos(c)) continue;
+      if(isEntryFolder(c)) host.appendChild(entryRow(sortedVideos(c),c.subs,c.name));
+      else if(holdsEntries(c)) host.appendChild(groupNode(c));
+      else { const h=document.createElement('div'); h.className='sect'; h.textContent=c.name; host.appendChild(h); renderInto(host,c); }
+    }
+    for(const r of folderEntries(node)) host.appendChild(r);
+  }
+  function groupNode(node){
+    const wrap=document.createElement('div'); wrap.className='node grp-node';
+    const row=document.createElement('div'); row.className='row grp';
+    row.innerHTML='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg><span class="nm"></span><span class="cnt"></span>';
+    row.querySelector('.nm').textContent=node.name;
+    const cw=document.createElement('div'); cw.className='children';
+    renderInto(cw,node);
+    row.addEventListener('click',()=>wrap.classList.toggle('open'));
+    wrap.appendChild(row); wrap.appendChild(cw);
     return wrap;
   }
-  // The entries a folder's own videos make inside a category: one video plays alone, two play as a pair.
+  // The entries a folder's own videos make: one video plays alone, two play as a pair.
   // With three or more, videos of the same length belong together (the two streams of one lecture measured
   // 0.01–0.3 s apart): each pairs with the next one by name within LEN_TOL, and the rest play alone.
   const LEN_TOL=1;   // seconds
-  function folderEntries(node,twoLabel){
+  function folderEntries(node){
     const vids=sortedVideos(node);
     if(vids.length===1) return [entryRow(vids,node.subs,baseName(vids[0].name))];
-    if(vids.length===2) return [entryRow(vids,node.subs,twoLabel)];
+    if(vids.length===2) return [entryRow(vids,node.subs,node.name||'Both videos')];
     const used=new Set(), groups=[];
     for(let i=0;i<vids.length;i++){
       if(used.has(i)) continue;
       used.add(i);
-      const d=lengths.get(vids[i]);
+      const d=lenOf(vids[i]);
       let j=-1;
-      if(isFinite(d)) for(let k=i+1;k<vids.length;k++){ const e=lengths.get(vids[k]); if(!used.has(k) && isFinite(e) && Math.abs(e-d)<=LEN_TOL){ j=k; break; } }
+      if(isFinite(d)) for(let k=i+1;k<vids.length;k++){ const e=lenOf(vids[k]); if(!used.has(k) && isFinite(e) && Math.abs(e-d)<=LEN_TOL){ j=k; break; } }
       if(j>=0){ used.add(j); groups.push([vids[i],vids[j]]); } else groups.push([vids[i]]);
     }
     // Captions go to the entry whose video they are named after (Lecture.mp4 → Lecture.srt or Lecture.en.srt);
@@ -612,16 +747,91 @@
     return groups.map(g=>entryRow(g, node.subs.filter(sub=>g.some(f=>named(sub,f))).concat(g.length===2?orphans:[]),
                                   g.map(f=>baseName(f.name)).join(' + ')));
   }
-  const ICON_TWO='<rect x="2" y="6" width="9" height="12" rx="1.5"/><rect x="13" y="6" width="9" height="12" rx="1.5"/>',
-        ICON_ONE='<rect x="3" y="6" width="18" height="12" rx="1.5"/>';
+
+  // How an entry's name reads. "<course number> <yyyy-mm-dd> <lesson>" shows the lesson, with the date on the line
+  // below (the course number repeats its folder's name). "01 - Unit 8.1: Overview" shows "8.1  Overview".
+  // Any other name shows as it is.
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function describe(label){
+    let s=label.trim(), date=null, num='';
+    const dm=s.match(/(?:^|\s)(\d{4})-(\d{2})-(\d{2})(?=\s|$|[_.,·-])/);
+    if(dm){
+      const d=new Date(+dm[1],+dm[2]-1,+dm[3]);
+      if(d.getMonth()===+dm[2]-1){
+        date=d;
+        s=s.replace(/^\d{3,}\s+(?=\d{4}-\d{2}-\d{2})/,'').replace(dm[0].trim(),' ').replace(/\s+/g,' ').replace(/^[\s\-–—_·:：,]+|[\s\-–—_·:：,]+$/g,'');
+      }
+    }
+    const lead=s.match(/^(\d{1,3})\s*[-–—.)]\s+(.+)$/);
+    const rest=lead?lead[2]:s;
+    const named=rest.match(/^(?:unit|lecture|lesson|part|chapter|week|episode|ep\.?)\s*(\d+(?:\.\d+)*)\s*[:：\-–—.]\s*(.+)$/i) || rest.match(/^(\d+(?:\.\d+)+)\s*[:：\-–—]?\s+(.+)$/);
+    if(named){ num=named[1]; s=named[2].trim(); }
+    else if(lead){ num=String(+lead[1]); s=rest.trim(); }
+    if(!s && date){ s=fmtDate(date); date=null; }
+    return {num, title:s||label, date};
+  }
+  function fmtDate(d){ return DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():''); }
+  function fmtLen(sec){
+    if(sec<60) return Math.round(sec)+' s';
+    const m=Math.round(sec/60); if(m<60) return m+' min';
+    return Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':'');
+  }
+  function fmtLeft(sec){
+    const m=Math.max(1,Math.ceil(sec/60));
+    return (m<60 ? m+' min' : Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':''))+' left';
+  }
+  const RESUME_MIN=10;   // seconds in before a video counts as started, and is picked up where you left off
+  const ICON_DONE='<svg class="st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#E9EAEE"/><polyline points="4.8 8.3 7 10.4 11.2 5.9" fill="none" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        ICON_NEW='<svg class="st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.9" fill="none" stroke="#C9CCD2" stroke-width="1.5"/></svg>',
+        ICON_NOW='<svg class="st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="5" width="2.4" height="8" rx="1" fill="#E5484D"/><rect x="6.8" y="2.5" width="2.4" height="10.5" rx="1" fill="#E5484D"/><rect x="11.1" y="7" width="2.4" height="6" rx="1" fill="#E5484D"/></svg>';
+  function iconPart(frac){   // an empty ring with the watched part drawn in
+    const a=Math.min(.999,Math.max(.02,frac))*2*Math.PI, x=(8+6.9*Math.sin(a)).toFixed(2), y=(8-6.9*Math.cos(a)).toFixed(2);
+    return '<svg class="st" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.9" fill="none" stroke="#C9CCD2" stroke-width="1.5"/><path d="M8 1.1 A6.9 6.9 0 '+(frac>.5?1:0)+' 1 '+x+' '+y+'" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  }
   function entryRow(vids,subs,label){
-    const two=vids.length>1;
-    const row=document.createElement('div'); row.className='row pair';
-    row.innerHTML='<span style="width:14px;flex-shrink:0"></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(two?ICON_TWO:ICON_ONE)+'</svg><span class="nm"></span>'+(two?'<span class="badge">2</span>':'');
-    row.querySelector('.nm').textContent=label;
-    row.addEventListener('click',ev=>{ev.stopPropagation();if(activeRow)activeRow.classList.remove('active');row.classList.add('active');activeRow=row;loadPair(vids,subs);});
+    const row=document.createElement('div'); row.className='row pair ent';
+    row.innerHTML='<span class="st"></span><div class="tx"><div class="t"><span class="num"></span><span class="nm"></span></div><div class="m"></div></div>';
+    const info=describe(label);
+    row._vids=vids; row._subs=subs; row._key=entryKey(vids); row._info=info;
+    if(info.num) row.querySelector('.num').textContent=info.num; else row.querySelector('.num').remove();
+    row.querySelector('.nm').textContent=info.title;
+    row.addEventListener('click',ev=>{ev.stopPropagation();loadPair(vids,subs,row);});
+    paintEntry(row);
     return row;
   }
+  // An entry's status, details and progress line, from what's been watched.
+  function paintEntry(row){
+    const w=watch[row._key]||{}, d=lenOf(row._vids[0]), active=row===activeRow;
+    const started=w.t>=RESUME_MIN && isFinite(d) && d>0 && w.t<d;
+    row.classList.toggle('done',!!w.done && !active);
+    const st=active?ICON_NOW : started?iconPart(w.t/d) : w.done?ICON_DONE : ICON_NEW;
+    const old=row.querySelector('.st'); if(old._html!==st){ const tmp=document.createElement('div'); tmp.innerHTML=st; const n=tmp.firstChild; n._html=st; old.replaceWith(n); }
+    const parts=[]; if(row._info.date) parts.push(fmtDate(row._info.date));
+    if(started) parts.push(fmtLeft(d-w.t)); else if(isFinite(d)) parts.push(fmtLen(d));
+    const m=row.querySelector('.m'); m.textContent=parts.join(' · ');
+    if(row._subs.length){ const c=document.createElement('span'); c.className='cc'; c.textContent='CC'; m.appendChild(c); }
+    let bar=row.querySelector('.pbar');
+    if(started){ if(!bar){ bar=document.createElement('div'); bar.className='pbar'; bar.innerHTML='<i></i>'; row.querySelector('.tx').appendChild(bar); } bar.firstChild.style.width=(w.t/d*100).toFixed(1)+'%'; }
+    else if(bar) bar.remove();
+  }
+  // A group's count: how many of its entries are watched, or how many there are.
+  function paintGroup(g){
+    const ents=[...g.querySelector(':scope > .children').children].filter(el=>el.classList.contains('ent'));
+    const cnt=g.querySelector(':scope > .row .cnt'); if(!ents.length){ cnt.textContent=''; return; }
+    const done=ents.filter(r=>(watch[r._key]||{}).done).length, n=ents.length;
+    const noun=ents.every(r=>r._vids.length>1)?(n===1?'lecture':'lectures'):(n===1?'video':'videos');
+    cnt.textContent=done?done+' of '+n+' watched':n+' '+noun;
+  }
+  function paintGroupOf(row){ const g=row.parentElement && row.parentElement.closest('.grp-node'); if(g) paintGroup(g); }
+  function setActive(row){
+    const prev=activeRow;
+    if(prev) prev.classList.remove('active');
+    activeRow=row||null;
+    if(row){ row.classList.add('active'); for(let g=row.parentElement; g && g!==libTreeEl; g=g.parentElement) if(g.classList.contains('grp-node')) g.classList.add('open'); }
+    if(prev && prev.isConnected) paintEntry(prev);
+    if(row) paintEntry(row);
+  }
+  const entryLabel=row=>(row._info.num?row._info.num+' ':'')+row._info.title;
 
   /* ---------- long names: hover shows the full name and slides the cut-off text ---------- */
   // Only names that don't fit react. After a short pause the name slides left at a reading
@@ -686,7 +896,12 @@
   })();
 
   function isSolo(){ return app.classList.contains('solo'); }
-  function loadPair(vids,subs){            // one video plays alone in the left deck; two play side by side
+  let currentKey=null, currentRow=null;
+  function loadPair(vids,subs,row){        // one video plays alone in the left deck; two play side by side
+    recordProgress();                    // how far you got in the one you're leaving
+    hideResume();
+    setActive(row);
+    const key=currentKey=entryKey(vids); currentRow=row||null;
     const two=vids.length>1;
     currentPair=two?[vids[0],vids[1]]:[vids[0]];
     app.classList.toggle('solo',!two); requestAnimationFrame(fitTime);   // one video: fewer buttons, more room for the time
@@ -697,7 +912,13 @@
     syncPreviewSrc();
     pause(); seekTo(0);
     setAudio('A');                       // baseline: left
-    app.classList.add('collapsed');
+    hideDrawer();
+    // started before (and not just at the very end): continue from there, and say so
+    const w=watch[key], at=w && w.t>=RESUME_MIN ? w.t : 0;
+    if(at) A.addEventListener('loadedmetadata',()=>{
+      if(currentKey!==key || !(at<refDuration()-RESUME_MIN)) return;
+      seekTo(at); showResume(at);
+    },{once:true});
   }
   function unloadDeck(video,stage,pv){    // empty the second deck, so nothing of the previous pair keeps playing or holding memory
     video.pause(); video.removeAttribute('src'); video.load();
@@ -890,7 +1111,7 @@
   function refDuration(){const a=isFinite(A.duration)?A.duration:0,b=isFinite(B.duration)?B.duration:0;return Math.max(a,b)||0;}
   function masterTime(){const av=audible();if(av.src)return av.currentTime;return A.src?A.currentTime:(B.src?B.currentTime:0);}
   function play(){if(!anyLoaded())return;syncTargets(true);const ps=[];if(A.src)ps.push(A.play());if(B.src)ps.push(B.play());Promise.allSettled(ps);playing=true;setPlayIcon(true);}
-  function pause(){clearTimeout(clickTimer);A.pause();B.pause();playing=false;setPlayIcon(false);}   // also drops a start still waiting on a click
+  function pause(){clearTimeout(clickTimer);A.pause();B.pause();playing=false;setPlayIcon(false);recordProgress();}   // also drops a start still waiting on a click
   function toggle(){playing?pause():play();}
   function setPlayIcon(p){document.getElementById('playIcon').innerHTML=p?'<rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/>':'<polygon points="6 4 20 12 6 20" fill="#fff" stroke="none"/>';}
   function seekTo(t){t=Math.max(0,Math.min(t,refDuration()));if(A.src)A.currentTime=clampTo(A,t);if(B.src)B.currentTime=clampTo(B,t);updateUI();}
@@ -930,6 +1151,38 @@
   A.addEventListener('loadedmetadata',()=>document.getElementById('durTime').textContent=fmt(refDuration()));
   B.addEventListener('loadedmetadata',()=>document.getElementById('durTime').textContent=fmt(refDuration()));
   [A,B].forEach(v=>v.addEventListener('ended',()=>{if(A.ended||B.ended)pause();}));
+
+  /* ---------- progress: how far you got, kept as you watch ---------- */
+  // Every few seconds while playing, on pause, on leaving for another video, and when the page goes away.
+  // Near the end (the last 3%, at least the last 20 s) counts as watched, and the next visit starts from the beginning.
+  function recordProgress(){
+    if(!currentKey) return;
+    const d=refDuration(), t=masterTime();
+    if(!(d>0)) return;                   // the new video hasn't loaded yet: nothing to say about it
+    const w=watch[currentKey]||(watch[currentKey]={});
+    if(A.ended||B.ended||d-t<=Math.max(20,d*0.03)){ w.done=true; w.t=0; } else w.t=Math.floor(t);
+    w.at=Date.now(); pruneWatch(); saveJSON(WATCH_KEY,watch);
+    if(currentRow && currentRow.isConnected){ paintEntry(currentRow); paintGroupOf(currentRow); }
+  }
+  setInterval(()=>{ if(playing) recordProgress(); },5000);
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) recordProgress(); });
+  window.addEventListener('pagehide',recordProgress);
+  A.addEventListener('loadedmetadata',()=>{   // the sidebar learns this video's length
+    if(currentPair){ noteLength(currentPair[0],A.duration); if(currentRow && currentRow.isConnected) paintEntry(currentRow); }
+  });
+
+  /* ---------- resume note: "Resumed at 17:24 · Start over" for a few seconds ---------- */
+  const resumeNote=document.getElementById('resumeNote');
+  let resumeTimer=0;
+  function showResume(t){
+    document.getElementById('resumeText').textContent='Resumed at '+fmt(t);
+    resumeNote.classList.add('show'); clearTimeout(resumeTimer); resumeTimer=setTimeout(hideResume,6000);
+  }
+  function hideResume(){ clearTimeout(resumeTimer); resumeNote.classList.remove('show'); }
+  document.getElementById('startOverBtn').addEventListener('click',e=>{
+    e.stopPropagation(); hideResume(); seekTo(0);
+    if(currentKey && watch[currentKey]){ watch[currentKey].t=0; saveJSON(WATCH_KEY,watch); if(currentRow) paintEntry(currentRow); }
+  });
 
   let scrubbing=false;
   function setScrubbing(on){ scrubbing=on; transportEl.classList.toggle('scrubbing',on); }   // keeps the full timeline open while dragging, even off the bar
@@ -1150,13 +1403,13 @@
     setFsIcon();
     if(fsElement()){
       wasCollapsed=app.classList.contains('collapsed');
-      app.classList.add('collapsed');        // reveal as the slim rail; hamburger expands it
+      hideDrawer();                          // it comes in from the left edge, as in the window
       app.classList.add('fs-dock');
       app.style.setProperty('--barh',(transportEl.offsetHeight||157)+'px');   // captions lift by exactly the bar's height
     } else {
       clearTimeout(hideBarTimer); hideBarTimer=0;
-      app.classList.remove('fs-dock','dock-left','dock-bottom');
-      app.classList.toggle('collapsed', wasCollapsed);
+      app.classList.remove('fs-dock','dock-bottom');
+      if(wasCollapsed) hideDrawer(); else showDrawer();
     }
     requestAnimationFrame(zRefresh);
   }
@@ -1167,22 +1420,17 @@
   // The bottom bar also stays while the pointer is up to KEEP_ABOVE px above it, so reaching for the timeline on its
   // top edge and overshooting a little doesn't drop it; and leaving that zone hides it only after HIDE_MS, so a
   // pointer that comes straight back keeps it.
-  const EDGE_LEFT=8, EDGE_BOTTOM=32, KEEP_ABOVE=48, HIDE_MS=700;
+  const EDGE_BOTTOM=32, KEEP_ABOVE=48, HIDE_MS=700;
   let hideBarTimer=0;
   function dockBottom(show){
     if(show){ clearTimeout(hideBarTimer); hideBarTimer=0; app.classList.add('dock-bottom'); }
     else if(app.classList.contains('dock-bottom') && !hideBarTimer)
-      hideBarTimer=setTimeout(()=>{ hideBarTimer=0; if(!scrubbing) app.classList.remove('dock-bottom'); },HIDE_MS);
+      hideBarTimer=setTimeout(()=>{ hideBarTimer=0; if(!scrubbing && !moreOpen) app.classList.remove('dock-bottom'); },HIDE_MS);
   }
   window.addEventListener('mousemove',e=>{
     if(!app.classList.contains('fs-dock'))return;
     const fromBottom=window.innerHeight-e.clientY, keep=(transportEl.offsetHeight||120)+KEEP_ABOVE;
-    dockBottom(scrubbing || fromBottom<=EDGE_BOTTOM || (app.classList.contains('dock-bottom') && fromBottom<=keep));
-    const expanded=!app.classList.contains('collapsed');
-    const keepLeft=expanded?270:60;
-    const showLeft=e.clientX<=EDGE_LEFT || (app.classList.contains('dock-left') && e.clientX<=keepLeft);
-    app.classList.toggle('dock-left',showLeft);
-    if(!showLeft) app.classList.add('collapsed');   // leaving the left zone re-collapses to the rail
+    dockBottom(scrubbing || moreOpen || fromBottom<=EDGE_BOTTOM || (app.classList.contains('dock-bottom') && fromBottom<=keep));
   });
 
   /* ---------- ui + gentle sync ---------- */
@@ -1220,7 +1468,7 @@
     const rate=A.playbackRate||1, near=d>0 && ((d-t)/rate<=NEXT_WINDOW || A.ended || B.ended);
     const nx=near?nextEntry():null;
     nextBtn.classList.toggle('show',!!nx);
-    if(nx){ const nm=nx.querySelector('.nm').textContent; if(nextBtn.title!=='Next: '+nm+' (N)') nextBtn.title='Next: '+nm+' (N)'; }
+    if(nx){ const tip='Next: '+entryLabel(nx)+' (N)'; if(nextBtn.title!==tip) nextBtn.title=tip; }
   }
   function playNext(){
     const nx=nextEntry(); if(!nx) return;
@@ -1233,6 +1481,14 @@
   nextBtn.addEventListener('click',e=>{ e.stopPropagation(); playNext(); });
   setInterval(updateUI,200);
   setInterval(()=>{if(playing&&!scrubbing)syncTargets(false);},SYNC_MS);
+
+  /* ---------- ⋯ menu: swap sides, sound from L or R, reload ---------- */
+  const more=document.getElementById('more'), moreBtn=document.getElementById('moreBtn');
+  let moreOpen=false;
+  function setMore(open){ moreOpen=open; more.classList.toggle('open',open); moreBtn.setAttribute('aria-expanded',String(open)); }
+  moreBtn.addEventListener('click',e=>{ e.stopPropagation(); setMore(!moreOpen); });
+  document.getElementById('moreMenu').addEventListener('click',e=>{ e.stopPropagation(); if(e.target.closest('button')) setMore(false); });   // a choice closes it
+  document.addEventListener('click',()=>{ if(moreOpen) setMore(false); });                // so does a click anywhere else
 
   /* ---------- shortcuts overlay ---------- */
   const helpOverlay=document.getElementById('helpOverlay');
@@ -1251,6 +1507,7 @@
     const k=e.key;
     if(k==='?'){e.preventDefault();toggleHelp();return;}
     if(helpOpen){if(k==='Escape')closeHelp();return;}
+    if(moreOpen && k==='Escape'){setMore(false);moreBtn.focus();return;}
     if(speedArmed){
       if(k==='ArrowLeft'||k==='ArrowRight'){e.preventDefault();nudgeSpeed((k==='ArrowRight'?1:-1)*(e.shiftKey?0.10:0.05));return;}
       if(k==='Escape'){armSpeed(false);speed.blur();return;}
@@ -1268,7 +1525,7 @@
       case 'a':case 'A':if(!isSolo())toggleAudio();break;
       case 'm':case 'M':toggleMute();break;
       case 'c':case 'C':toggleCC();break;
-      case 'l':case 'L':app.classList.toggle('collapsed');break;
+      case 'l':case 'L':toggleDrawer();break;
       case 'r':case 'R':reloadPair();break;
       case 'n':case 'N':if(nextBtn.classList.contains('show'))playNext();break;   // only while the Next button shows
     }
