@@ -90,7 +90,7 @@
     transform:translateY(100%);transition:transform .45s cubic-bezier(.22,.61,.36,1);box-shadow:0 -6px 20px rgba(0,0,0,.18)}
   .app.fs-dock.dock-bottom .transport{transform:translateY(0)}
 
-  .stages{flex:1;display:flex;min-height:0;background:var(--stage)}
+  .stages{flex:1;display:flex;min-height:0;background:var(--stage);position:relative}
   .stage{flex-grow:1;flex-basis:0;min-width:36px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
   .stage video{width:100%;height:100%;object-fit:contain;display:none;background:#0b0b0d}
   .stage.loaded video{display:block}
@@ -272,6 +272,19 @@
     border:1px solid var(--line);border-radius:4px;color:var(--muted)}
   @media(max-width:560px){.help-cols{grid-template-columns:1fr}}
 
+  /* next entry: a small button in the video's corner during the last seconds */
+  .next-btn{position:absolute;right:14px;bottom:14px;z-index:60;display:flex;align-items:center;gap:7px;
+    height:36px;padding:0 14px 0 12px;border-radius:9px;border:none;cursor:pointer;
+    background:rgba(11,11,13,.68);color:#fff;font-family:var(--sans);font-size:13.5px;font-weight:600;letter-spacing:.02em;
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    opacity:0;visibility:hidden;transform:translateY(6px);
+    transition:opacity .25s ease,transform .25s ease,visibility 0s linear .25s,background .15s,bottom .45s cubic-bezier(.22,.61,.36,1)}
+  .next-btn.show{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+  .next-btn:hover{background:rgba(11,11,13,.88)}
+  .next-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .next-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .app.fs-dock.dock-bottom .next-btn{bottom:calc(var(--barh,160px) + 14px)}   /* fullscreen: rise above the bar as it slides up */
+
   /* ============ ONE VIDEO ============ */
   /* a lecture with a single video: it fills the stage, and the second deck and the two-video controls step aside */
   .app.solo #stageB,.app.solo #divider,.app.solo #swapBtn,.app.solo .seg-group,.app.solo #thumbWrap .thumb + .thumb{display:none}
@@ -327,6 +340,11 @@
         <video id="videoB" playsinline></video>
         <div class="placeholder"><span class="tag">Deck R</span><span class="hint">Click to open a library folder</span></div>
       </div>
+      <!-- next entry in the same folder; shows during the last seconds -->
+      <button class="next-btn" id="nextBtn" aria-label="Next video">
+        <svg viewBox="0 0 24 24"><polyline points="4 7 9 12 4 17"/><polyline points="11 7 16 12 11 17"/><line x1="20" y1="6.5" x2="20" y2="17.5"/></svg>
+        <span>Next</span>
+      </button>
     </div>
 
     <div class="transport">
@@ -414,6 +432,7 @@
           <h3>Playback</h3>
           <div class="help-row"><kbd>Space</kbd><span class="desc">Play / pause</span></div>
           <div class="help-row"><kbd>←</kbd><kbd>→</kbd><span class="desc">Skip 10 seconds</span></div>
+          <div class="help-row"><kbd>N</kbd><span class="desc">Next video (last 10 s)</span></div>
         </section>
         <section class="help-sec">
           <h3>Speed</h3>
@@ -1120,7 +1139,37 @@
     const t=masterTime(),d=refDuration();
     document.getElementById('curTime').textContent=fmt(t);
     if(!scrubbing&&d>0){const p=t/d*100;scrub.value=p*10;scrub.style.setProperty('--p',p+'%');}
+    updateNext(t,d);
   }
+
+  /* ---------- next entry (the one listed after it, in the same folder) ---------- */
+  // During the last NEXT_WINDOW seconds, counted in real time (so at 2× it is the last 20 s of video),
+  // and once the video has ended, a small Next button appears. It plays the entry listed below the
+  // current one in the same sidebar folder; on the last entry of a folder, or a video loaded with
+  // "Load videos", there is nothing next and it stays hidden.
+  const NEXT_WINDOW=10;
+  const nextBtn=document.getElementById('nextBtn'), libTree=document.getElementById('libTree');
+  function nextEntry(){
+    if(!activeRow || !activeRow.isConnected) return null;
+    const box=r=>r.closest('.children')||libTree;
+    const home=box(activeRow), rows=[...home.querySelectorAll('.row.pair')].filter(r=>box(r)===home);
+    return rows[rows.indexOf(activeRow)+1]||null;
+  }
+  function updateNext(t,d){
+    const rate=A.playbackRate||1, near=d>0 && ((d-t)/rate<=NEXT_WINDOW || A.ended || B.ended);
+    const nx=near?nextEntry():null;
+    nextBtn.classList.toggle('show',!!nx);
+    if(nx){ const nm=nx.querySelector('.nm').textContent; if(nextBtn.title!=='Next: '+nm+' (N)') nextBtn.title='Next: '+nm+' (N)'; }
+  }
+  function playNext(){
+    const nx=nextEntry(); if(!nx) return;
+    nx.click();                                  // same as clicking it in the sidebar: highlight it and load it
+    const tr=libTree.getBoundingClientRect(), rr=nx.getBoundingClientRect();
+    if(rr.top<tr.top || rr.bottom>tr.bottom) libTree.scrollTop+=rr.top-tr.top-tr.height/3;   // keep it in view for when the sidebar opens
+    play();
+    nextBtn.classList.remove('show'); nextBtn.blur();
+  }
+  nextBtn.addEventListener('click',e=>{ e.stopPropagation(); playNext(); });
   setInterval(updateUI,200);
   setInterval(()=>{if(playing&&!scrubbing)syncTargets(false);},SYNC_MS);
 
@@ -1160,6 +1209,7 @@
       case 'c':case 'C':toggleCC();break;
       case 'l':case 'L':app.classList.toggle('collapsed');break;
       case 'r':case 'R':reloadPair();break;
+      case 'n':case 'N':if(nextBtn.classList.contains('show'))playNext();break;   // only while the Next button shows
     }
   });
 

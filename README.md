@@ -35,6 +35,7 @@ The left video is **L** and the right one is **R**.
 - **Lighten:** the ☀ button in a video's corner brightens dark footage, such as a blackboard.
 - **Layout:** drag the divider between the videos to resize them, or swap sides with one click.
 - **Fullscreen:** the sidebar and controls tuck away and slide back when you move the pointer to the edge.
+- **Next video:** in the last 10 seconds, a small **Next** button appears in the corner of the video. It plays the entry listed below the current one in the same sidebar folder. The 10 seconds are real time, so at 2× it appears 20 seconds of video before the end.
 - **Reload:** restarts the video files and keeps your place, speed and audio choice.
 - **Long names:** hover a clip or folder name that's cut off to see it in full. The name also slides sideways so you can read it in place.
 
@@ -53,6 +54,7 @@ The left video is **L** and the right one is **R**.
 | `C` | Captions on / off |
 | `S` | Swap sides (two videos) |
 | `R` | Reload the video(s) |
+| `N` | Next video (while the Next button shows) |
 | `F` | Fullscreen |
 | `L` | Show / hide the sidebar |
 | `?` | Show all shortcuts |
